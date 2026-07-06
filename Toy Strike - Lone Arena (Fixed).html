@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Anime Toy Squad 3D: Ultimate Arena v9.0</title>
+    <!-- Tailwind CSS for modern adaptive UI overlays -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for robust 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0c0a0f;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #game-frame {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            border: 4px solid rgba(255, 255, 255, 0.95);
+            border-radius: 28px;
+            pointer-events: none;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4), 0 4px 20px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+        }
+        @media (max-width: 768px) {
+            #game-frame {
+                border-width: 2px;
+                border-radius: 16px;
+                top: 4px; left: 4px; right: 4px; bottom: 4px;
+            }
+        }
+        /* Touch buttons */
+        .mobile-btn {
+            touch-action: none;
+            user-select: none;
+            position: absolute;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            transition: transform 0.1s;
+        }
+        .mobile-btn:active {
+            transform: scale(0.9);
+        }
+        /* Scope overlay */
+        #scope-overlay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(80vw, 420px);
+            height: min(80vw, 420px);
+            border: 4px solid #f43f5e;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+        }
+        #scope-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%; width: 2px; height: 100%;
+            background-color: rgba(244, 63, 94, 0.6);
+        }
+        #scope-overlay::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 0; width: 100%; height: 2px;
+            background-color: rgba(244, 63, 94, 0.6);
+        }
+        /* Standard Crosshair */
+        #normal-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 15;
+        }
+        #normal-crosshair::before, #normal-crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: #10b981;
+        }
+        #normal-crosshair::before { top: 0; left: 9px; width: 2px; height: 20px; }
+        #normal-crosshair::after { top: 9px; left: 0; width: 20px; height: 2px; }
+        #normal-crosshair-center {
+            position: absolute;
+            top: 8px; left: 8px; width: 4px; height: 4px;
+            background-color: #f43f5e;
+            border-radius: 50%;
+        }
+        /* Emote radial wheel */
+        #emote-wheel-container {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            height: 280px;
+            z-index: 45;
+            pointer-events: auto;
+        }
+        .emote-sector {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: rgba(15, 23, 42, 0.95);
+            border: 2px solid #ec4899;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .emote-sector:hover {
+            transform: scale(1.15);
+            background-color: #ec4899;
+            color: #0f172a;
+        }
+        /* Hitmarker FX animation */
+        #hitmarker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+            z-index: 16;
+            opacity: 0;
+            transition: opacity 0.05s ease-out;
+        }
+        .hitmarker-line {
+            position: absolute;
+            background-color: #f43f5e;
+        }
+        .hm-1 { top: 0; left: 11px; width: 2px; height: 7px; }
+        .hm-2 { bottom: 0; left: 11px; width: 2px; height: 7px; }
+        .hm-3 { top: 11px; left: 0; width: 7px; height: 2px; }
+        .hm-4 { top: 11px; right: 0; width: 7px; height: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="game-frame"></div>
+    <div id="canvas-container"></div>
+
+    <!-- TACTICAL CROSSHAIR, SCOPES & RETICLES -->
+    <div id="normal-crosshair">
+        <div id="normal-crosshair-center"></div>
+    </div>
+    <div id="scope-overlay">
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-red-500 rounded-full animate-ping opacity-40"></div>
+    </div>
+    <div id="hitmarker">
+        <div class="hitmarker-line hm-1"></div>
+        <div class="hitmarker-line hm-2"></div>
+        <div class="hitmarker-line hm-3"></div>
+        <div class="hitmarker-line hm-4"></div>
+    </div>
+
+    <!-- DAMAGE TEXT CONTAINER -->
+    <div id="damage-container" class="absolute inset-0 pointer-events-none z-20 overflow-hidden"></div>
+    <div id="kill-feed" class="absolute top-24 right-16 flex flex-col gap-1.5 max-w-xs z-20 pointer-events-none text-right"></div>
+
+    <!-- ==================================================== -->
+    <!-- SIGN IN / AUTHENTICATION SCREEN -->
+    <!-- ==================================================== -->
+    <div id="screen-auth" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+            <!-- Visual branding with high-quality reference preview image -->
+            <div class="w-full h-44 bg-cover bg-center rounded-2xl mb-6 border border-slate-700/80 shadow-md relative" style="background-image: url('image_fed4d7.jpg');">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
+                <span class="absolute bottom-3 left-3 bg-pink-500 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">Lobby Live</span>
+            </div>
+            
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-400 to-amber-300 tracking-wide uppercase">Chibi Squad</h1>
+                <p class="text-xs text-slate-400 mt-1">Multi-Touch Ultimate Arena Patch v9.0</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Enter Fighter Codename</label>
+                    <input type="text" id="auth-username" value="ToySoldier" placeholder="Enter name" class="w-full bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-pink-500 transition-colors text-sm">
+                </div>
+                <button onclick="authLogin()" class="w-full bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 hover:brightness-110 text-slate-950 font-black py-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm uppercase tracking-wider">
+                    Enter Toy Box Arena
+                </button>
+            </div>
+            <p class="text-[9px] text-center text-slate-500 mt-6 leading-relaxed">
+                Developer: Mohd Musatqeem Alam. Single-Account Auto login is active. All stats, purchases, HUD customizations are instantly synced to persistent local storage.
+            </p>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- MAIN LOBBY SCREEN -->
+    <!-- ==================================================== -->
+    <div id="screen-lobby" class="absolute inset-0 z-40 hidden flex flex-col justify-between bg-slate-950/90 backdrop-blur-sm p-4 md:p-6 overflow-y-auto">
+        <!-- Stats Top Bar -->
+        <div class="flex justify-between items-center bg-slate-900/95 border border-slate-800 p-4 rounded-2xl shadow-lg max-w-6xl mx-auto w-full">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-pink-500/20 rounded-full flex items-center justify-center text-lg">🎖️</div>
+                <div>
+                    <h2 class="font-bold text-white text-sm flex items-center gap-2">
+                        <span id="lobby-profile-name">Player</span>
+                        <span id="lobby-profile-level" class="text-[10px] px-2 py-0.5 bg-pink-500/20 text-pink-400 rounded-full font-bold">Lv.1</span>
+                    </h2>
+                    <p class="text-[10px] text-slate-400">Rank Point: <span id="lobby-profile-rp" class="text-amber-400 font-bold">1200</span> <span id="lobby-rank-name" class="text-slate-400">(Bronze)</span></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <span class="text-[10px] text-slate-400 uppercase block">Coins</span>
+                    <span id="lobby-profile-coins" class="text-yellow-400 font-bold text-sm">💰 1500</span>
+                </div>
+                <div class="text-right border-l border-slate-800 pl-4">
+                    <span class="text-[10px] text-slate-400 uppercase block">Diamonds</span>
+                    <span id="lobby-profile-diamonds" class="text-cyan-400 font-bold text-sm">💎 100</span>
+                </div>
+                <button onclick="toggleShop()" class="bg-yellow-500 hover:bg-yellow-600 text-slate-950 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1">
+                    🛒 SHOP
+                </button>
+            </div>
+        </div>
+
+        <!-- Middle Column Panels -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto w-full items-stretch my-6">
+            <!-- Character Selector & Image -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-pink-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <span>👑</span> Select Anime Fighter
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3" id="lobby-characters">
+                        <!-- Dynamic buttons -->
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <!-- Dynamic preview banner -->
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center gap-3">
+                        <div class="w-12 h-12 rounded bg-cover bg-center border border-pink-500" style="background-image: url('image_fed4d7.jpg');"></div>
+                        <div class="text-[10px] flex-1">
+                            <p class="text-slate-200 font-bold" id="meta-name">-</p>
+                            <p class="text-pink-400 font-semibold" id="meta-special">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customization & Settings -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <span>⚙️</span> Game Settings
+                    </h3>
+                    <div class="space-y-4 text-xs">
+                        <div>
+                            <label class="text-slate-400 block mb-1">Camera Sensitivity: <span id="lbl-sens" class="text-blue-400">1.5</span></label>
+                            <input type="range" id="cfg-sens" min="0.5" max="4.0" step="0.1" value="1.5" class="w-full accent-blue-500" onchange="updateSettings()">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Sound Synthesis (SFX):</span>
+                            <input type="checkbox" id="cfg-sfx" checked class="w-4 h-4 accent-pink-500" onchange="updateSettings()">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Battle Music (BGM):</span>
+                            <input type="checkbox" id="cfg-music" checked class="w-4 h-4 accent-pink-500" onchange="updateSettings()">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Anti-Aliasing:</span>
+                            <input type="checkbox" id="cfg-aa" checked class="w-4 h-4 accent-pink-500" onchange="updateSettings()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 space-y-2">
+                    <button onclick="enterHUDDesigner()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl border border-slate-700 transition-colors text-xs">
+                        🎨 HUD Layout Designer
+                    </button>
+                    <button onclick="triggerLobbyEmote()" class="w-full bg-pink-600/20 hover:bg-pink-600/30 text-pink-300 font-bold py-2.5 rounded-xl border border-pink-500/30 transition-colors text-xs">
+                        🎭 Execute Lobby Emote
+                    </button>
+                </div>
+            </div>
+
+            <!-- Launcher Mode Panel -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <span>⚔️</span> Choose Arena
+                    </h3>
+                    <div class="space-y-2">
+                        <button class="w-full text-left p-3.5 rounded-xl border border-pink-500/40 bg-pink-500/10 text-white font-bold text-xs flex justify-between items-center transition-all">
+                            <span>🏆 FFA 9-Bot Tactical Brawl</span>
+                            <span class="text-[10px] bg-pink-500 text-white px-2 py-0.5 rounded-full font-bold">BATTLE</span>
+                        </button>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-[10px] text-slate-400 leading-relaxed mt-3">
+                        Procedural sandboxed arena. Third-person aim-tracking, independent cameras, destructive Gloo Walls, and custom reactive emote loops.
+                    </div>
+                </div>
+                <button onclick="startMatch()" class="mt-6 w-full py-4 bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 hover:brightness-110 text-slate-950 font-black uppercase tracking-widest text-lg rounded-2xl shadow-lg transition-all transform hover:-translate-y-1">
+                    START MATCH
+                </button>
+            </div>
+        </div>
+
+        <div class="text-center text-slate-500 text-[11px] max-w-lg mx-auto leading-relaxed mt-auto">
+            <b>PC Bindings:</b> WASD to move | Mouse Aim | Left Click Shoot | Right Click Scope | Space Jump | Ctrl Crouch | Q Gloo Wall | G Grenade | R Reload | E Emote Wheel | 1-6 Weapons.
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- INTERACTIVE TOUCH GAME HUD SCREEN -->
+    <!-- ==================================================== -->
+    <div id="screen-hud" class="absolute inset-0 z-30 hidden pointer-events-none select-none">
+        <!-- Touch camera sweeping overlay on right half -->
+        <div id="touch-camera-area" class="absolute right-0 top-0 w-1/2 h-full pointer-events-auto touch-none z-0"></div>
+
+        <!-- Top bar Status -->
+        <div class="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-auto bg-slate-950/90 border border-slate-800 text-white px-5 py-2 rounded-full flex items-center gap-4 shadow-2xl z-20 scale-90 sm:scale-100">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                <span id="hud-timer" class="font-mono text-sm font-bold text-slate-100">05:00</span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <div class="text-xs font-semibold text-slate-300">
+                Kills: <span id="hud-kills" class="text-pink-400 font-black text-sm">0</span>
+            </div>
+        </div>
+
+        <!-- Radar radial Map -->
+        <div class="absolute top-6 right-6 pointer-events-auto bg-slate-950/95 border border-slate-800 p-2 rounded-2xl shadow-2xl flex flex-col items-center z-20">
+            <canvas id="minimap-canvas" width="160" height="160" style="width:100px;height:100px;" class="rounded-xl bg-slate-900 border border-slate-800"></canvas>
+            <span class="text-[8px] text-slate-400 font-bold tracking-wider mt-1">TACTICAL RADAR</span>
+        </div>
+
+        <!-- Top Left health, armor and ammo panel -->
+        <div class="absolute top-6 left-6 pointer-events-auto flex flex-col gap-2 z-20">
+            <div class="bg-slate-950/90 border border-slate-800 backdrop-blur-md p-3 rounded-2xl shadow-lg w-44">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span id="hud-char-badge" class="w-2.5 h-2.5 bg-pink-500 rounded-full"></span>
+                    <h3 id="hud-player-name" class="text-[11px] font-black text-slate-100 truncate">Player</h3>
+                </div>
+                <!-- HP bar -->
+                <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden relative border border-slate-700">
+                    <div id="hud-hp-bar" class="w-full h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"></div>
+                    <span id="hud-hp-text" class="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white drop-shadow-md">200</span>
+                </div>
+                <!-- Shield bar -->
+                <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden relative mt-1.5 border border-slate-700">
+                    <div id="hud-armor-bar" class="w-full h-full bg-gradient-to-r from-blue-500 to-sky-400 transition-all"></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-950/90 border border-slate-800 px-3 py-1.5 rounded-xl shadow-lg flex items-center justify-between w-44">
+                <span class="text-[9px] font-bold text-slate-400">AMMO</span>
+                <span id="hud-ammo" class="font-mono text-xs font-black text-white">30 / 120</span>
+            </div>
+
+            <div class="flex gap-1.5">
+                <button onclick="exitToLobby()" class="bg-red-500/20 text-red-400 text-[10px] py-1 px-2.5 rounded-lg border border-red-500/30 font-bold tracking-wider hover:bg-red-500/30 transition-all">EXIT</button>
+                <button id="btn-hud-emote" class="bg-pink-500/20 text-pink-400 text-[10px] py-1 px-2.5 rounded-lg border border-pink-500/30 font-bold tracking-wider hover:bg-pink-500/30 transition-all">EMOTE</button>
+            </div>
+        </div>
+
+        <!-- Bottom switcher weapons hotbar (Free fire styles) -->
+        <div id="weapon-hotbar-hud" class="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto flex gap-1.5 bg-slate-950/90 border border-slate-800 p-2 rounded-2xl z-20 scale-90 sm:scale-100">
+            <!-- Populated via javascript -->
+        </div>
+
+        <!-- Virtual Joystick -->
+        <div id="joystick-wrapper" class="absolute bottom-12 left-12 w-28 h-28 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-full flex items-center justify-center pointer-events-auto touch-none select-none z-20">
+            <div id="joystick-knob" class="w-12 h-12 bg-pink-500 rounded-full shadow-lg pointer-events-none transform transition-transform duration-75"></div>
+        </div>
+
+        <!-- Custom reactive action buttons layout (Controlled dynamically via user layouts mapping) -->
+        <div id="hud-buttons-container" class="absolute inset-0 pointer-events-none z-10">
+            <button id="btn-fire" class="mobile-btn pointer-events-auto w-16 h-16 bg-red-500/90 active:bg-red-600 text-white rounded-full border-2 border-white/30">🔥</button>
+            <button id="btn-scope" class="mobile-btn pointer-events-auto w-14 h-14 bg-blue-500/80 active:bg-blue-600 text-white rounded-full border border-white/20">🔍</button>
+            <button id="btn-jump" class="mobile-btn pointer-events-auto w-14 h-14 bg-pink-500/80 active:bg-pink-600 text-white rounded-full border border-white/20">🦘</button>
+            <button id="btn-crouch" class="mobile-btn pointer-events-auto w-14 h-14 bg-teal-500/80 active:bg-teal-600 text-white rounded-full border border-white/20">🧎</button>
+            <button id="btn-gloo" class="mobile-btn pointer-events-auto w-14 h-14 bg-amber-500/85 active:bg-amber-600 text-white rounded-full border border-white/20">🛡️</button>
+            <button id="btn-grenade" class="mobile-btn pointer-events-auto w-14 h-14 bg-orange-500/85 active:bg-orange-600 text-white rounded-full border border-white/20">💣</button>
+            <button id="btn-reload" class="mobile-btn pointer-events-auto w-14 h-14 bg-slate-800/90 active:bg-slate-700 text-white rounded-full border border-white/20">🔄</button>
+        </div>
+    </div>
+
+    <!-- Interactive Emote Radial Wheel modal layer -->
+    <div id="emote-wheel-container">
+        <!-- Dynamically injected circular emote nodes -->
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- HUD DESIGNER SCREEN -->
+    <!-- ==================================================== -->
+    <div id="hud-designer-overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-50 hidden flex-col justify-between p-6">
+        <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 max-w-xl mx-auto w-full text-center">
+            <h2 class="text-xl font-black text-pink-500 uppercase">HUD Layout Designer</h2>
+            <p class="text-[11px] text-slate-400 mt-1">Tap, hold and drag buttons inside the boundary grid below. Scale and opacity will update in real time.</p>
+            <div class="flex gap-4 justify-center items-center mt-3">
+                <div class="text-xs">
+                    <span class="text-slate-400 block mb-1">Scale</span>
+                    <input type="range" id="ds-scale" min="0.6" max="2.0" step="0.1" value="1.0" class="accent-pink-500">
+                </div>
+                <div class="text-xs">
+                    <span class="text-slate-400 block mb-1">Opacity</span>
+                    <input type="range" id="ds-opacity" min="0.2" max="1.0" step="0.1" value="0.9" class="accent-pink-500">
+                </div>
+            </div>
+        </div>
+        <div class="flex-1 relative border border-dashed border-slate-700 my-4 rounded-2xl overflow-hidden touch-none" id="designer-canvas"></div>
+        <div class="flex justify-center gap-4 max-w-xl mx-auto w-full pb-4">
+            <button onclick="resetHUDLayout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold px-4 py-3 rounded-xl border border-red-500/40 text-xs">🔄 RESET</button>
+            <button onclick="saveHUDLayout()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 py-3 rounded-xl text-xs">💾 SAVE LAYOUT</button>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- ADVANCED SKIN / WEAPON / EMOTE SHOP MODAL -->
+    <!-- ==================================================== -->
+    <div id="screen-shop" class="absolute inset-0 z-50 hidden flex items-center justify-center bg-slate-950/95 p-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500 uppercase flex items-center gap-2">
+                    <span>🛒</span> TOY BOX SUPERSTORE
+                </h2>
+                <button onclick="toggleShop()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">✕ CLOSE</button>
+            </div>
+            
+            <!-- Category Tabs matching v9 Requirements -->
+            <div class="grid grid-cols-6 gap-2 mb-4">
+                <button onclick="setShopTab('chars')" id="tab-chars" class="py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">Characters</button>
+                <button onclick="setShopTab('weapons')" id="tab-weapons" class="py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">Guns</button>
+                <button onclick="setShopTab('gloos')" id="tab-gloos" class="py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">Gloo Walls</button>
+                <button onclick="setShopTab('emotes')" id="tab-emotes" class="py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">Emotes</button>
+                <button onclick="setShopTab('grenades')" id="tab-grenades" class="py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">Grenades</button>
+                <button onclick="setShopTab('bundles')" id="tab-bundles" class="py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">Bundles</button>
+            </div>
+
+            <!-- Item Showcase Cards Grid -->
+            <div id="shop-items-grid" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 pr-2 py-2">
+                <!-- Shop Cards injected dynamically with high quality canvas graphic views -->
+            </div>
+
+            <!-- Bottom balance ledger -->
+            <div class="border-t border-slate-800 pt-4 mt-4 flex justify-between items-center text-xs">
+                <div class="flex items-center gap-4">
+                    <span class="font-bold text-yellow-400" id="shop-balance-coins">💰 1500 Coins</span>
+                    <span class="font-bold text-cyan-400" id="shop-balance-diamonds">💎 100 Diamonds</span>
+                </div>
+                <span class="text-[10px] text-slate-500">Auto-saves instantly to storage profile.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- MATCH END SUMMARY SCREEN -->
+    <!-- ==================================================== -->
+    <div id="screen-result" class="absolute inset-0 z-50 hidden flex items-center justify-center bg-slate-950/95 p-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-xl w-full shadow-2xl text-center">
+            <div class="mb-4">
+                <span id="result-status-icon" class="text-6xl">🏆</span>
+                <h1 id="result-status-title" class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-pink-500 mt-2 uppercase tracking-wide">Victory!</h1>
+                <p class="text-xs text-slate-400 mt-1">Match Complete Results Summary</p>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3 my-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                <div class="p-2 border-r border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Kills</span>
+                    <span id="result-kills" class="text-lg font-black text-pink-400">0</span>
+                </div>
+                <div class="p-2 border-r border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Coins Earned</span>
+                    <span id="result-coins" class="text-lg font-black text-yellow-400">+0</span>
+                </div>
+                <div class="p-2">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Rank Point</span>
+                    <span id="result-rp" class="text-lg font-black text-amber-400">+0</span>
+                </div>
+            </div>
+
+            <!-- Match leaderboard rankings -->
+            <div class="text-left mb-6">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Match Leaderboard</h3>
+                <div class="space-y-1.5 max-h-48 overflow-y-auto pr-2" id="result-leaderboard-list">
+                    <!-- Leaderboard rows dynamic -->
+                </div>
+            </div>
+
+            <button onclick="exitToLobby()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition-all border border-slate-700 text-sm uppercase">
+                Save & Continue to Lobby
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- SCRIPTS CONFIGURATION, PHYSICS, SYNTHESIZERS -->
+    <!-- ==================================================== -->
+    <script>
+        const STORAGE_KEY = "CHIBISQUAD_PERSISTENT_PROD_V9";
+        
+        let userProfile = {
+            username: "ToySoldier",
+            level: 1,
+            xp: 0,
+            coins: 2000,
+            diamonds: 150,
+            rp: 1200,
+            matchesWon: 0,
+            matchesLost: 0,
+            selectedChar: 0,
+            selectedWeaponSkin: "default",
+            selectedGlooSkin: "neon",
+            selectedEmotes: ["wave", "dance", "point", "sit"],
+            unlockedChars: [0],
+            unlockedWeaponSkins: ["default"],
+            unlockedGlooSkins: ["neon"],
+            unlockedEmotes: ["wave", "dance", "point", "sit"],
+            sens: 1.5,
+            sfx: true,
+            music: true,
+            aa: true,
+            hudPositions: null
+        };
+
+        function loadProfile() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    userProfile = { ...userProfile, ...parsed };
+                } catch(e) { console.error("Could not parse profile fallback default used", e); }
+            } else {
+                saveProfile();
+            }
+        }
+
+        function saveProfile() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(userProfile));
+        }
+
+        function getRankName(rp) {
+            if (rp < 1300) return "Bronze";
+            if (rp < 1550) return "Silver";
+            if (rp < 1800) return "Gold";
+            if (rp < 2100) return "Platinum";
+            if (rp < 2400) return "Diamond";
+            if (rp < 2800) return "Heroic 🔥";
+            return "Grandmaster 👑";
+        }
+
+        // =========================================================================
+        // PROCEDURAL AUDIO SYNTHESIS ENGINE (WEB AUDIO API - V9 COMPATIBLE)
+        // =========================================================================
+        const AudioFX = {
+            ctx: null,
+            bgmNode: null,
+            bgmOscs: [],
+            bgmActive: false,
+            init() { 
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                }
+            },
+            playTone(type, startFreq, endFreq, startGain, endGain, duration) {
+                if (!userProfile.sfx) return;
+                this.init();
+                const ctx = this.ctx;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = type;
+                osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
+                if (endFreq !== null) osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + duration);
+                gain.gain.setValueAtTime(startGain, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, endGain), ctx.currentTime + duration);
+                osc.start(); osc.stop(ctx.currentTime + duration);
+            },
+            playClick() { this.playTone('sine', 800, 1000, 0.05, 0.001, 0.08); },
+            playShoot(weapType = 'pistol') {
+                if (weapType === 'pistol') this.playTone('sawtooth', 350, 100, 0.08, 0.001, 0.1);
+                else if (weapType === 'smg') this.playTone('sawtooth', 500, 150, 0.06, 0.001, 0.08);
+                else if (weapType === 'shotgun') this.playTone('sawtooth', 120, 40, 0.18, 0.001, 0.22);
+                else if (weapType === 'rifle') this.playTone('sawtooth', 400, 90, 0.10, 0.001, 0.14);
+                else if (weapType === 'sniper') this.playTone('sawtooth', 600, 50, 0.24, 0.001, 0.35);
+                else this.playTone('sawtooth', 450, 100, 0.09, 0.001, 0.11); 
+            },
+            playHit() { this.playTone('sine', 320, 80, 0.14, 0.01, 0.05); },
+            playHeadshot() { this.playTone('square', 800, 1100, 0.12, 0.01, 0.1); },
+            playGloo() { this.playTone('triangle', 90, 480, 0.15, 0.01, 0.18); },
+            playReload() { this.playTone('triangle', 180, 280, 0.08, 0.001, 0.3); },
+            playExplode() { this.playTone('sawtooth', 100, 10, 0.35, 0.001, 0.5); },
+            playFootstep() { this.playTone('triangle', 65, 30, 0.05, 0.001, 0.05); },
+            playJump() { this.playTone('sine', 200, 350, 0.08, 0.001, 0.15); },
+            playLand() { this.playTone('triangle', 120, 45, 0.10, 0.001, 0.08); },
+            playVictory() {
+                const notes = [261.6, 329.6, 392.0, 523.3];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => this.playTone('sine', freq, freq, 0.12, 0.001, 0.4), idx * 150);
+                });
+            },
+            playDefeat() {
+                const notes = [311.1, 293.7, 261.6, 220.0];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => this.playTone('triangle', freq, freq - 20, 0.12, 0.001, 0.4), idx * 150);
+                });
+            },
+            startBGM() {
+                if (!userProfile.music || this.bgmActive) return;
+                this.init();
+                this.bgmActive = true;
+                this.bgmLoop();
+            },
+            stopBGM() {
+                this.bgmActive = false;
+                this.bgmOscs.forEach(o => { try { o.stop(); } catch(e){} });
+                this.bgmOscs = [];
+            },
+            bgmLoop() {
+                if (!this.bgmActive) return;
+                const notes = [261.6, 293.7, 329.6, 349.2, 392.0, 440.0, 493.9, 523.3];
+                let step = 0;
+                const playBeat = () => {
+                    if (!this.bgmActive) return;
+                    const freq = notes[Math.floor(Math.random() * notes.length)] * (gameActive ? 1.5 : 1.0);
+                    this.playTone('triangle', freq, freq, 0.02, 0.001, 0.22);
+                    setTimeout(playBeat, gameActive ? 180 : 300);
+                };
+                playBeat();
+            }
+        };
+
+        // =========================================================================
+        // SVG VECTOR ASSETS DATABASE
+        // =========================================================================
+        const WeaponIcons = {
+            pistol: `<svg viewBox="0 0 64 64" class="w-8 h-8 fill-pink-500"><path d="M12 16h32c2.2 0 4 1.8 4 4v8c0 2.2-1.8 4-4 4H28l-4 16h-8l4-16h-8c-2.2 0-4-1.8-4-4v-8c0-2.2 1.8-4 4-4zM24 24h12v-4H24v4z"/></svg>`,
+            smg: `<svg viewBox="0 0 64 64" class="w-8 h-8 fill-pink-500"><path d="M10 14h40l4 10H20l-2 16h-6l2-16h-4c-2 0-4-2-4-4V14zm16 10h12v-4H26v4zM32 44l-4 10h-6l4-10h6z"/></svg>`,
+            shotgun: `<svg viewBox="0 0 64 64" class="w-8 h-8 fill-pink-500"><path d="M6 20h42l4-4h8v12h-8l-4-4H10v12H6V20zm32 4a2 2 0 100-4 2 2 0 000 4z"/></svg>`,
+            rifle: `<svg viewBox="0 0 64 64" class="w-8 h-8 fill-pink-500"><path d="M4 22h44l4-6h10v14h-10l-4-6h-6v16h-8V30H10v10H4V22zm18 0h8v-4h-8v4z"/></svg>`,
+            sniper: `<svg viewBox="0 0 64 64" class="w-8 h-8 fill-pink-500"><path d="M2 24h42v-4h6v4h12v4H50v4h-6v-4H12v16H4V24zm32-4h8l-2-6h-4l-2 6z"/></svg>`,
+            lmg: `<svg viewBox="0 0 64 64" class="w-8 h-8 fill-pink-500"><path d="M8 20h38l6 10h10v8H52l-6-10H20v14h-6V30H8V20zm20 6h10l-1-4H29l-1 4z"/></svg>`
+        };
+
+        const charactersData = [
+            { id: 0, name: "Pink Squad Leader", type: "pink", hair: "ponytail", color: 0xff75a0, colorHex: "#ff75a0", special: "Speed Boost" },
+            { id: 1, name: "Blue Heavy Gunner", type: "blue", hair: "mohawk", color: 0x4fc3f7, colorHex: "#4fc3f7", special: "Added Shield" },
+            { id: 2, name: "Green Bubble Scout", type: "green", hair: "twintail", color: 0x81c784, colorHex: "#81c784", special: "Fast Footwork" },
+            { id: 3, name: "Fire Mystic Archer", type: "orange", hair: "crest", color: 0xff8a65, colorHex: "#ff8a65", special: "Extra Reload Rate" },
+            { id: 4, name: "Cyber Ninja", type: "purple", hair: "ninja-band", color: 0xab47bc, colorHex: "#ab47bc", special: "Steady Aim" }
+        ];
+
+        const weaponsDatabase = [
+            { id: 0, label: "Pistol", type: "pistol", damage: 24, rate: 0.35, mag: 15, recoil: 0.015, range: 45, iconName: "pistol" },
+            { id: 1, label: "SMG", type: "smg", damage: 16, rate: 0.09, mag: 40, recoil: 0.03, range: 32, iconName: "smg" },
+            { id: 2, label: "Shotgun", type: "shotgun", damage: 18, rate: 0.85, mag: 6, recoil: 0.09, range: 18, iconName: "shotgun" },
+            { id: 3, label: "Assault Rifle", type: "rifle", damage: 35, rate: 0.14, mag: 30, recoil: 0.045, range: 65, iconName: "rifle" },
+            { id: 4, label: "Sniper", type: "sniper", damage: 140, rate: 1.6, mag: 5, recoil: 0.14, range: 150, iconName: "sniper" },
+            { id: 5, label: "LMG", type: "lmg", damage: 40, rate: 0.11, mag: 100, recoil: 0.07, range: 80, iconName: "lmg" }
+        ];
+
+        const characterSkins = [
+            { id: 0, name: "Standard Leader", cost: 0, currency: "coins", desc: "Original anime pink design" },
+            { id: 1, name: "Gold Chibi Boy", cost: 800, currency: "coins", desc: "Gold core plated frame", skinColor: 0xffd700 },
+            { id: 2, name: "Cyber Ninja Skin", cost: 1200, currency: "coins", desc: "Midnight combat suit", skinColor: 0x1e1b4b },
+            { id: 3, name: "Flame Archer Skin", cost: 200, currency: "diamonds", desc: "Premium magma energy suit", skinColor: 0xff3d00 }
+        ];
+
+        const weaponSkins = [
+            { id: "default", name: "Standard Coat", cost: 0, currency: "coins", desc: "Default metallic toy coat", color: 0x546e7a },
+            { id: "ruby", name: "Ruby Fury", cost: 400, currency: "coins", desc: "Glowing ruby paint", color: 0xd81b60 },
+            { id: "neon", name: "Neon Spark", cost: 800, currency: "coins", desc: "Cyberpunk toxic green finish", color: 0x00e676 },
+            { id: "emerald", name: "Emerald", cost: 100, currency: "diamonds", desc: "Jade collection legendary coat", color: 0x00b0ff }
+        ];
+
+        const glooSkins = [
+            { id: "neon", name: "Neon Blue Grid", cost: 0, currency: "coins", desc: "Standard energy shielding", color: 0x00f0ff },
+            { id: "ruby", name: "Crimson Spark", cost: 300, currency: "coins", desc: "Blood ruby defense grid", color: 0xff0055 },
+            { id: "gold", name: "Golden Gate", cost: 120, currency: "diamonds", desc: "Royal golden defensive boundary", color: 0xffd700 }
+        ];
+
+        const emotesDatabase = [
+            { id: "wave", name: "Wave Emote", cost: 0, currency: "coins", desc: "Fighter waves left hand friendly" },
+            { id: "dance", name: "Bouncing Dance", cost: 300, currency: "coins", desc: "Rapid spinning jump rotation" },
+            { id: "laugh", name: "Chibi Laugh", cost: 500, currency: "coins", desc: "Vibrant fast head shaking laugh" },
+            { id: "victory", name: "Victory Pose", cost: 100, currency: "diamonds", desc: "Raise hands and spawn spark stars" },
+            { id: "sit", name: "Rest Sit", cost: 600, currency: "coins", desc: "Sit relaxing flat on ground level" },
+            { id: "point", name: "Directive Point", cost: 400, currency: "coins", desc: "Direct hand forward aimed correctly" }
+        ];
+
+        const grenadesDatabase = [
+            { id: "classic", name: "Explosive Classic", cost: 0, currency: "coins", desc: "Bounce-physics green blast" },
+            { id: "plasma", name: "Blue Plasma Splash", cost: 100, currency: "diamonds", desc: "Emits electric sparks upon detonation" }
+        ];
+
+        const bundlesDatabase = [
+            { id: "master_pack", name: "Toy Box Bundles", cost: 250, currency: "diamonds", desc: "Unlocks Cyber skins instantly" }
+        ];
+
+        // =========================================================================
+        // THREE.JS SCENE LAYOUTS & ASSETS
+        // =========================================================================
+        let scene, camera, renderer, clock;
+        const obstacles = [];
+        const players = [];
+        let bullets = [];
+        let grenades = [];
+        let particles = [];
+        const bubbleParticles = [];
+
+        let humanPlayer = null;
+        let activeCharDef = charactersData[0];
+        let currentWeaponIndex = 0;
+        let gameActive = false;
+        let matchTimer = 300;
+        let isScopeActive = false;
+
+        let keys = { w: false, a: false, s: false, d: false, space: false, shift: false, ctrl: false };
+        let mousePitch = -0.15;
+        let mouseYaw = 0;
+
+        let joystickActive = false;
+        let joystickDir = { x: 0, y: 0 };
+
+        // Flawless pointer state handling for mobile devices
+        let activeTouches = {};
+        let touchJoyId = null;
+        let touchMoveId = null;
+        let lastTouchMoveX = 0;
+        let lastTouchMoveY = 0;
+
+        let defaultHUDPositions = {
+            "btn-fire": { x: 80, y: 40, scale: 1.0, opacity: 0.9 },
+            "btn-scope": { x: 84, y: 68, scale: 1.0, opacity: 0.9 },
+            "btn-jump": { x: 70, y: 35, scale: 1.0, opacity: 0.9 },
+            "btn-crouch": { x: 70, y: 62, scale: 1.0, opacity: 0.9 },
+            "btn-gloo": { x: 55, y: 15, scale: 1.0, opacity: 0.9 },
+            "btn-grenade": { x: 42, y: 15, scale: 1.0, opacity: 0.9 },
+            "btn-reload": { x: 88, y: 15, scale: 1.0, opacity: 0.9 }
+        };
+
+        // Materials cache
+        let materials;
+
+        const TextureGenerator = {
+            createCrateCanvas() {
+                const c = document.createElement('canvas'); c.width = 128; c.height = 128; const ctx = c.getContext('2d');
+                ctx.fillStyle = '#df9e5c'; ctx.fillRect(0, 0, 128, 128);
+                ctx.lineWidth = 10; ctx.strokeStyle = '#9c612e'; ctx.strokeRect(5, 5, 118, 118);
+                ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(118, 118); ctx.moveTo(118, 10); ctx.lineTo(10, 118); ctx.stroke();
+                ctx.lineWidth = 4; ctx.strokeStyle = '#bd7f42'; ctx.strokeRect(12, 12, 104, 104);
+                return new THREE.CanvasTexture(c);
+            },
+            createBrickCanvas() {
+                const c = document.createElement('canvas'); c.width = 256; c.height = 128; const ctx = c.getContext('2d');
+                ctx.fillStyle = '#ca7151'; ctx.fillRect(0, 0, 256, 128);
+                ctx.strokeStyle = '#a45336'; ctx.lineWidth = 4;
+                for (let r = 0; r <= 8; r++) { ctx.beginPath(); ctx.moveTo(0, r * 16); ctx.lineTo(256, r * 16); ctx.stroke(); }
+                for (let r = 0; r < 8; r++) {
+                    const off = (r % 2) * 32;
+                    for (let c_col = 0; c_col <= 5; c_col++) { ctx.beginPath(); ctx.moveTo(c_col * 64 - off, r * 16); ctx.lineTo(c_col * 64 - off, (r + 1) * 16); ctx.stroke(); }
+                }
+                const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+            },
+            createChibiFaceCanvas(colorHex, eyeType) {
+                const c = document.createElement('canvas'); c.width = 256; c.height = 256; const ctx = c.getContext('2d');
+                ctx.fillStyle = colorHex; ctx.fillRect(0, 0, 256, 256);
+                ctx.beginPath(); ctx.arc(65, 150, 20, 0, Math.PI * 2); ctx.fillStyle = '#f43f5e'; ctx.fill();
+                ctx.beginPath(); ctx.arc(191, 150, 20, 0, Math.PI * 2); ctx.fill();
+                const drawEye = (x, y) => {
+                    ctx.save(); ctx.translate(x, y);
+                    if (eyeType === 'sharp') {
+                        ctx.lineWidth = 8; ctx.strokeStyle = '#111827'; ctx.beginPath(); ctx.moveTo(-25, 5); ctx.lineTo(20, -10); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI, false); ctx.fillStyle = '#111827'; ctx.fill();
+                    } else {
+                        ctx.scale(0.48, 1.15); ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fillStyle = '#0f172a'; ctx.fill();
+                        ctx.beginPath(); ctx.arc(0, 10, 14, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
+                        ctx.beginPath(); ctx.arc(0, -10, 8, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+                    }
+                    ctx.restore();
+                };
+                drawEye(85, 110); drawEye(171, 110);
+                ctx.beginPath(); ctx.arc(128, 155, 14, 0, Math.PI); ctx.fillStyle = '#991b1b'; ctx.fill();
+                ctx.beginPath(); ctx.arc(128, 161, 8, 0, Math.PI); ctx.fillStyle = '#fb7185'; ctx.fill();
+                return new THREE.CanvasTexture(c);
+            },
+            createFlagCanvas() {
+                const c = document.createElement('canvas'); c.width = 128; c.height = 64; const ctx = c.getContext('2d');
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 128, 64);
+                ctx.fillStyle = '#2563eb'; ctx.fillRect(0, 0, 128, 12); ctx.fillRect(0, 52, 128, 12);
+                ctx.fillStyle = '#1d4ed8'; ctx.beginPath(); let rot = Math.PI/2*3, x=64, y=32, step=Math.PI/5;
+                ctx.moveTo(64, 16);
+                for(let i=0;i<5;i++){ ctx.lineTo(64+Math.cos(rot)*16, 32+Math.sin(rot)*16); rot+=step; ctx.lineTo(64+Math.cos(rot)*7, 32+Math.sin(rot)*7); rot+=step; }
+                ctx.closePath(); ctx.fill(); return new THREE.CanvasTexture(c);
+            }
+        };
+
+        function buildMaterials() {
+            const clayProps = { roughness: 0.8, metalness: 0.1 };
+            materials = {
+                ground: new THREE.MeshStandardMaterial({ color: 0xebd9c4, ...clayProps }),
+                greenery: new THREE.MeshStandardMaterial({ color: 0x93b76e, ...clayProps }),
+                boundaryWall: new THREE.MeshStandardMaterial({ map: TextureGenerator.createBrickCanvas(), roughness: 0.9, metalness: 0.05 }),
+                warehouseWall: new THREE.MeshStandardMaterial({ color: 0xaf9ebf, ...clayProps }),
+                warehouseRoof: new THREE.MeshStandardMaterial({ color: 0xdf844e, ...clayProps }),
+                buildingPurple: new THREE.MeshStandardMaterial({ color: 0x6e638d, ...clayProps }),
+                buildingWhite: new THREE.MeshStandardMaterial({ color: 0xebdcd5, ...clayProps }),
+                watchtowerBeige: new THREE.MeshStandardMaterial({ color: 0xf3ddb3, ...clayProps }),
+                containerBlue: new THREE.MeshStandardMaterial({ color: 0x228beb, roughness: 0.4, metalness: 0.5 }),
+                containerRed: new THREE.MeshStandardMaterial({ color: 0xe03d3c, roughness: 0.4, metalness: 0.5 }),
+                tentGreen: new THREE.MeshStandardMaterial({ color: 0xb5c777, ...clayProps }),
+                crate: new THREE.MeshStandardMaterial({ map: TextureGenerator.createCrateCanvas(), roughness: 0.85 }),
+                bubble: new THREE.MeshStandardMaterial({ color: 0x93e5fa, transparent: true, opacity: 0.65, roughness: 0.1, metalness: 0.9 }),
+                bubbleWhite: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }),
+                ladderWood: new THREE.MeshStandardMaterial({ color: 0x9c612e, ...clayProps }),
+                waterBullet: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
+                classicGloo: new THREE.MeshStandardMaterial({ color: 0x00f0ff, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.8 }),
+                rubyGloo: new THREE.MeshStandardMaterial({ color: 0xff0055, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.8 }),
+                goldGloo: new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85 }),
+                grenadeCarcass: new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.7 }),
+                plasmaBall: new THREE.MeshStandardMaterial({ color: 0x00d2ff, emissive: 0x0055ff, roughness: 0.2 })
+            };
+        }
+
+        // =========================================================================
+        // COLLISION PHYSICS IMPLEMENTATION
+        // =========================================================================
+        function registerCylinderObstacle(x, z, r) { obstacles.push({ type: 'cylinder', x: x, z: z, r: r }); }
+        function registerBoxObstacle(x, z, w, d, rotY = 0, meshRef = null, isDestructible = false) { 
+            obstacles.push({ type: 'box', x: x, z: z, w: w, d: d, rotY: rotY, meshRef: meshRef, hp: isDestructible ? 150 : Infinity, maxHp: isDestructible ? 150 : Infinity }); 
+        }
+
+        function checkCollision(nextX, nextZ, radius) {
+            const bound = 48.5;
+            if (Math.abs(nextX) > bound || Math.abs(nextZ) > bound) return { hit: true, x: Math.max(-bound, Math.min(bound, nextX)), z: Math.max(-bound, Math.min(bound, nextZ)) };
+            for (let i = 0; i < obstacles.length; i++) {
+                const obs = obstacles[i];
+                if (obs.type === 'cylinder') {
+                    const dx = nextX - obs.x, dz = nextZ - obs.z, dist = Math.sqrt(dx*dx + dz*dz), minDist = radius + obs.r;
+                    if (dist < minDist) {
+                        const angle = Math.atan2(dz, dx); return { hit: true, x: obs.x + Math.cos(angle) * minDist, z: obs.z + Math.sin(angle) * minDist };
+                    }
+                } else if (obs.type === 'box') {
+                    const s = Math.sin(-obs.rotY), c = Math.cos(-obs.rotY);
+                    const tx = nextX - obs.x, tz = nextZ - obs.z;
+                    const lx = tx * c - tz * s, lz = tx * s + tz * c;
+                    const halfW = obs.w / 2 + radius, halfD = obs.d / 2 + radius;
+                    if (Math.abs(lx) < halfW && Math.abs(lz) < halfD) {
+                        const overlapX = halfW - Math.abs(lx), overlapZ = halfD - Math.abs(lz);
+                        let nlx = lx, nlz = lz;
+                        if (overlapX < overlapZ) nlx += (lx > 0 ? overlapX : -overlapX); else nlz += (lz > 0 ? overlapZ : -overlapZ);
+                        const finalX = obs.x + (nlx * c + nlz * s), finalZ = obs.z + (-nlx * s + nlz * c);
+                        return { hit: true, x: finalX, z: finalZ };
+                    }
+                }
+            }
+            return { hit: false, x: nextX, z: nextZ };
+        }
+
+        // =========================================================================
+        // PROCEDURAL MAP GENERATION
+        // =========================================================================
+        function buildMap() {
+            const groundGeo = new THREE.PlaneGeometry(120, 120);
+            const ground = new THREE.Mesh(groundGeo, materials.ground);
+            ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+            const grassShape = new THREE.Shape();
+            grassShape.moveTo(-60, -60); grassShape.lineTo(-10, -60); grassShape.lineTo(-60, -10); grassShape.closePath();
+            const grassMesh = new THREE.Mesh(new THREE.ShapeGeometry(grassShape), materials.greenery);
+            grassMesh.rotation.x = -Math.PI / 2; grassMesh.position.y = 0.05; grassMesh.receiveShadow = true; scene.add(grassMesh);
+
+            const createWall = (x, z, w, h, d, rotY = 0) => {
+                const grp = new THREE.Group();
+                const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), materials.boundaryWall);
+                m.position.y = h / 2; m.castShadow = m.receiveShadow = true; grp.add(m);
+                for (let i = 0; i <= Math.floor(w / 8); i++) {
+                    const p = new THREE.Mesh(new THREE.BoxGeometry(d * 1.3, h + 0.6, d * 1.3), materials.boundaryWall);
+                    p.position.set(-w / 2 + (i * (w / Math.floor(w/8))), h / 2, 0); p.castShadow = true; grp.add(p);
+                }
+                grp.position.set(x, 0, z); grp.rotation.y = rotY; scene.add(grp);
+                registerBoxObstacle(x, z, w, d, rotY);
+            };
+            createWall(0, -50, 100, 4.2, 1.5); createWall(25, 50, 50, 4.2, 1.5); createWall(-40, 50, 20, 4.2, 1.5);
+            createWall(50, 0, 100, 4.2, 1.5, Math.PI / 2); createWall(-50, 0, 100, 4.2, 1.5, Math.PI / 2);
+
+            const wh = new THREE.Mesh(new THREE.BoxGeometry(18, 14, 40), materials.warehouseWall);
+            wh.position.set(-33, 7, -10); wh.castShadow = wh.receiveShadow = true; scene.add(wh);
+            registerBoxObstacle(-33, -10, 18, 40);
+
+            const wt = new THREE.Mesh(new THREE.BoxGeometry(8, 14, 8), materials.watchtowerBeige);
+            wt.position.set(38, 7, 12); wt.castShadow = true; scene.add(wt);
+            registerBoxObstacle(38, 12, 8, 8);
+
+            const createTent = (x, z, rY) => {
+                const t = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 10, 24, 1, true, 0, Math.PI), materials.tentGreen);
+                t.rotation.set(Math.PI / 2, 0, Math.PI); t.position.set(x, 0.05, z); t.rotation.y = rY; t.castShadow = true; scene.add(t);
+                registerCylinderObstacle(x, z, 5.8);
+            };
+            createTent(3, -20, Math.PI / 3); createTent(20, -1, -Math.PI / 4);
+
+            const createCont = (x, z, r, red) => {
+                const c = new THREE.Mesh(new THREE.BoxGeometry(7, 7, 16), red ? materials.containerRed : materials.containerBlue);
+                c.position.set(x, 3.5, z); c.rotation.y = r; c.castShadow = true; scene.add(c); registerBoxObstacle(x, z, 7, 16, r);
+            };
+            createCont(16, 28, Math.PI / 4, false); createCont(-2, -40, 0, false); createCont(-24, 15, -Math.PI / 6, true);
+
+            const createCrate = (x, z, rY) => {
+                const c = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), materials.crate);
+                c.position.set(x, 1, z); c.rotation.y = rY; c.castShadow = true; scene.add(c); registerBoxObstacle(x, z, 2, 2, rY);
+            };
+            createCrate(-21, -4, 0.2); createCrate(-20, -1, -0.4); createCrate(6, 2, 0.1); createCrate(21, -22, 0.4);
+        }
+
+        // =========================================================================
+        // RIGGED CUTE ANIME SQUAD CHARACTER (VERBATIM ACCURATE v9 RIG)
+        // =========================================================================
+        function buildChibiCharacterRig(charDef, customSkinColor = null) {
+            const group = new THREE.Group();
+            const skinHex = customSkinColor !== null ? customSkinColor : charDef.color;
+            const torsoMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.6 });
+            
+            // Round Kirby-esque cute body
+            const torso = new THREE.Mesh(new THREE.SphereGeometry(0.48, 32, 32), torsoMat);
+            torso.position.y = 0.48; torso.castShadow = true; group.add(torso);
+
+            // Large Cute face
+            const faceTex = TextureGenerator.createChibiFaceCanvas(charDef.colorHex, charDef.id === 4 ? 'sharp' : 'sparkle');
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), new THREE.MeshStandardMaterial({ color: skinHex, map: faceTex }));
+            head.position.y = 0.95; head.castShadow = true; group.add(head);
+
+            // Left arm joint
+            const lArmP = new THREE.Group(); lArmP.position.set(-0.45, 0.6, 0);
+            const lArm = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), torsoMat); lArm.position.y = -0.1; lArm.castShadow = true; lArmP.add(lArm); group.add(lArmP);
+            
+            // Right arm joint (Holds gun muzzle directly)
+            const rArmP = new THREE.Group(); rArmP.position.set(0.45, 0.6, 0);
+            const rArm = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), torsoMat); rArm.position.y = -0.1; rArm.castShadow = true; rArmP.add(rArm); group.add(rArmP);
+            
+            // Feet
+            const lLegP = new THREE.Group(); lLegP.position.set(-0.2, 0.12, 0);
+            const lLeg = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), torsoMat); lLeg.scale.set(1.1, 0.8, 1.4); lLeg.castShadow = true; lLegP.add(lLeg); group.add(lLegP);
+            
+            const rLegP = new THREE.Group(); rLegP.position.set(0.2, 0.12, 0);
+            const rLeg = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), torsoMat); rLeg.scale.set(1.1, 0.8, 1.4); rLeg.castShadow = true; rLegP.add(rLeg); group.add(rLegP);
+
+            // Double attachment holds weapon in exact position
+            const weaponHolder = new THREE.Group(); weaponHolder.position.set(0, -0.2, 0.25); rArmP.add(weaponHolder);
+            
+            return { model: group, weaponHolder, rArm: rArmP, lArm: lArmP, rLeg: rLegP, lLeg: lLegP, torso, head };
+        }
+
+        // =========================================================================
+        // VISUAL EFFECTS GENERATORS
+        // =========================================================================
+        function createMuzzleFlash(pos, dir) {
+            const flash = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), new THREE.MeshBasicMaterial({color: 0xffff00, transparent: true, opacity: 0.9, side: THREE.DoubleSide}));
+            flash.position.copy(pos).add(dir.clone().multiplyScalar(0.7));
+            flash.lookAt(pos.clone().add(dir.clone().multiplyScalar(2)));
+            scene.add(flash);
+            particles.push({ mesh: flash, life: 0.05, type: 'flash' });
+        }
+
+        function createShellEjection(pos, dir) {
+            const right = new THREE.Vector3(dir.z, 0, -dir.x).normalize();
+            const vel = right.multiplyScalar(0.08 + Math.random()*0.05).add(new THREE.Vector3(0, 0.15 + Math.random()*0.1, 0));
+            const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.08), new THREE.MeshStandardMaterial({color: 0xffaa00, metalness: 0.8}));
+            shell.position.copy(pos).add(dir.clone().multiplyScalar(0.2));
+            scene.add(shell);
+            particles.push({ mesh: shell, life: 2.0, type: 'shell', velocity: vel });
+        }
+
+        function createDamagePopup(pos, damage, isHeadshot) {
+            const el = document.createElement('div');
+            el.className = 'damage-popup text-base font-black absolute pointer-events-none z-50 select-none';
+            el.style.color = isHeadshot ? '#f43f5e' : '#fbbf24';
+            el.innerText = isHeadshot ? `${damage} (HEADSHOT)` : damage;
+            document.getElementById('damage-container').appendChild(el);
+            
+            const screenPos = pos.clone(); screenPos.y += 1.5;
+            screenPos.project(camera);
+            const x = (screenPos.x * .5 + .5) * window.innerWidth;
+            const y = (screenPos.y * -.5 + .5) * window.innerHeight;
+            el.style.left = `${x}px`; el.style.top = `${y}px`;
+            
+            setTimeout(() => el.remove(), 800);
+            
+            if(humanPlayer && pos.distanceTo(humanPlayer.position) > 0.1) {
+                const hm = document.getElementById('hitmarker');
+                hm.style.opacity = 1; setTimeout(() => hm.style.opacity = 0, 100);
+            }
+        }
+
+        function createExplosion(pos) {
+            AudioFX.playExplode();
+            const exp = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), new THREE.MeshBasicMaterial({color: 0xff5500, transparent: true, opacity: 0.8}));
+            exp.position.copy(pos); scene.add(exp);
+            particles.push({ mesh: exp, life: 0.3, type: 'explode', maxScale: 4 });
+        }
+
+        // =========================================================================
+        // COMBAT SYSTEM & MULTI-TURN ENTITY STATE MACHINE
+        // =========================================================================
+        class GameEntity {
+            constructor(charDef, isBot = false, customName = "Bot", skinOverride = null) {
+                this.charDef = charDef; this.isBot = isBot; this.name = isBot ? customName : userProfile.username;
+                this.maxHp = 200; this.hp = 200; this.armor = 100;
+                this.speed = isBot ? 0.28 : 0.36; this.glooCount = 3;
+                this.activeWeaponIndex = 0;
+                this.weaponLoadout = weaponsDatabase.map(w => ({ ...w, currentClip: w.mag }));
+                this.isDead = false; this.kills = 0; this.deaths = 0;
+                this.position = new THREE.Vector3();
+
+                let finalSkin = skinOverride;
+                if (!isBot && userProfile.selectedChar > 0) {
+                    const sk = characterSkins.find(s => s.id === userProfile.selectedChar);
+                    if (sk) finalSkin = sk.skinColor;
+                }
+
+                const rigged = buildChibiCharacterRig(charDef, finalSkin);
+                this.mesh = rigged.model; this.weaponHolder = rigged.weaponHolder; this.rig = rigged;
+                scene.add(this.mesh);
+
+                this.velocityY = 0; this.isJumping = false; this.isCrouching = false;
+                this.shootCooldown = 0; this.reloadTimer = 0;
+                this.aiState = "patrol"; this.aiTimer = 0; this.aiForwardVec = new THREE.Vector3(0, 0, 1);
+                
+                this.activeEmote = null; this.emoteTimer = 0;
+                this.footstepTimer = 0;
+
+                this.respawn(); this.updateWeaponModels();
+            }
+
+            respawn() {
+                let safe = false, rx, rz;
+                while (!safe) {
+                    rx = (Math.random() - 0.5) * 80; rz = (Math.random() - 0.5) * 80;
+                    if (!checkCollision(rx, rz, 1.5).hit) safe = true;
+                }
+                this.position.set(rx, 0.48, rz);
+                this.hp = this.maxHp; this.armor = 100; this.glooCount = 3; this.isDead = false;
+                this.velocityY = 0; this.isJumping = false; this.isCrouching = false;
+                this.activeEmote = null;
+                this.weaponLoadout.forEach(w => w.currentClip = w.mag);
+                if (this.mesh) { this.mesh.position.copy(this.position); this.mesh.visible = true; }
+            }
+
+            getCurrentWeapon() { return this.weaponLoadout[this.activeWeaponIndex]; }
+
+            updateWeaponModels() {
+                while (this.weaponHolder.children.length > 0) this.weaponHolder.remove(this.weaponHolder.children[0]);
+                const current = this.getCurrentWeapon();
+                const grp = new THREE.Group();
+                let paint = this.isBot ? 0x37474f : (weaponSkins.find(s => s.id === userProfile.selectedWeaponSkin)?.color || 0x546e7a);
+                const mat = new THREE.MeshStandardMaterial({ color: paint, metalness: 0.8 });
+                
+                if (current.type === "pistol") {
+                    const r = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.45), mat);
+                    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3), mat); b.rotation.x=Math.PI/2; b.position.set(0,0.06,0.25);
+                    grp.add(r,b);
+                } else if (current.type === "rifle") {
+                    const r = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.26, 0.95), mat);
+                    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35), mat); s.rotation.x=Math.PI/2; s.position.set(0,0.18,0);
+                    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.7), mat); b.rotation.x=Math.PI/2; b.position.set(0,0.04,0.65);
+                    grp.add(r,s,b);
+                } else {
+                    const r = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.7), mat);
+                    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45), mat); b.rotation.x=Math.PI/2; b.position.set(0,0.05,0.4);
+                    grp.add(r,b);
+                }
+                this.weaponHolder.add(grp);
+            }
+
+            takeDamage(amt, isHeadshot, attacker) {
+                if(this.isDead) return;
+                let fd = amt;
+                if(this.armor > 0) { const abs = amt * 0.4; this.armor = Math.max(0, this.armor - abs); fd = amt - abs; }
+                this.hp -= fd;
+                createDamagePopup(this.position, Math.round(fd), isHeadshot);
+                
+                if(this.isBot) { this.aiTarget = attacker; this.aiState = "attack"; }
+
+                if(this.hp <= 0) {
+                    this.hp = 0; this.isDead = true; this.deaths++; this.mesh.visible = false; AudioFX.playHit();
+                    if(attacker && attacker !== this) attacker.kills++;
+                    
+                    const el = document.createElement('div'); el.className = 'kill-feed-item text-xs font-bold';
+                    el.innerHTML = `☠️ <span class="text-pink-400">${attacker ? attacker.name : 'Unknown'}</span> eliminated <span class="text-slate-200">${this.name}</span>`;
+                    document.getElementById('kill-feed').appendChild(el);
+                    setTimeout(() => el.remove(), 3000);
+                    
+                    setTimeout(() => { if(gameActive) this.respawn(); }, 4000);
+                }
+            }
+
+            triggerEmote(emoteId) {
+                this.activeEmote = emoteId;
+                this.emoteTimer = 2.0; 
+            }
+
+            placeGlooWall() {
+                if(this.glooCount <= 0) return;
+                this.glooCount--;
+                const angle = this.isBot ? Math.atan2(this.aiForwardVec.x, this.aiForwardVec.z) : mouseYaw;
+                const wx = this.position.x + Math.sin(angle) * 3.5, wz = this.position.z + Math.cos(angle) * 3.5;
+                
+                let wallMat = materials.classicGloo;
+                if (userProfile.selectedGlooSkin === "ruby") wallMat = materials.rubyGloo;
+                else if (userProfile.selectedGlooSkin === "gold") wallMat = materials.goldGloo;
+
+                const w = new THREE.Mesh(new THREE.BoxGeometry(6, 4.5, 0.8), wallMat);
+                w.position.set(wx, 2.25, wz); w.rotation.y = angle; scene.add(w); AudioFX.playGloo();
+                
+                // Active Gloo Wall Destructible obstacle with hitpoints
+                const obs = { type: 'box', x: wx, z: wz, w: 6, d: 1.5, rotY: angle, meshRef: w, hp: 150, maxHp: 150 };
+                obstacles.push(obs);
+                
+                obs.damageWall = (dmg) => {
+                    obs.hp -= dmg;
+                    const pct = obs.hp / obs.maxHp;
+                    w.scale.set(pct, pct, 1.0);
+                    if (obs.hp <= 0) {
+                        const idx = obstacles.indexOf(obs);
+                        if (idx > -1) obstacles.splice(idx, 1);
+                        scene.remove(w);
+                        createExplosion(w.position);
+                    }
+                };
+                
+                setTimeout(() => {
+                    const idx = obstacles.indexOf(obs); if(idx > -1) { obstacles.splice(idx,1); scene.remove(w); }
+                }, 15000);
+            }
+
+            throwGrenade() {
+                const angle = this.isBot ? Math.atan2(this.aiForwardVec.x, this.aiForwardVec.z) : mouseYaw;
+                const ld = new THREE.Vector3(Math.sin(angle), 0.65, Math.cos(angle)).normalize();
+                
+                const isPlasma = userProfile.unlockedEmotes.includes("victory") && Math.random() > 0.5;
+                const sh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), isPlasma ? materials.plasmaBall : materials.grenadeCarcass);
+                
+                sh.position.copy(this.position).add(ld.clone().multiplyScalar(1.2)); sh.position.y += 0.4; scene.add(sh);
+                grenades.push({ mesh: sh, pos: sh.position.clone(), vel: ld.multiplyScalar(0.85), fuse: 2.0, owner: this, plasma: isPlasma });
+            }
+
+            fireWeapon(aimDir) {
+                const cur = this.getCurrentWeapon();
+                if(cur.currentClip <= 0) { this.reload(); return; }
+                cur.currentClip--; this.shootCooldown = cur.rate; AudioFX.playShoot(cur.type);
+                
+                const bPos = this.position.clone(); bPos.y += 0.45;
+                createMuzzleFlash(bPos, aimDir); createShellEjection(bPos, aimDir);
+                
+                const pCnt = cur.type === "shotgun" ? 6 : 1;
+                for(let p=0; p<pCnt; p++) {
+                    const spread = cur.recoil * (isScopeActive ? 0.35 : 1.0) * (pCnt > 1 ? 3.0 : 1.0);
+                    const fVel = aimDir.clone().add(new THREE.Vector3((Math.random()-0.5)*spread, (Math.random()-0.5)*spread, (Math.random()-0.5)*spread)).normalize().multiplyScalar(2.2);
+                    const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), materials.waterBullet);
+                    bMesh.position.copy(bPos); scene.add(bMesh);
+                    bullets.push({ mesh: bMesh, pos: bPos.clone(), vel: fVel, owner: this, life: 75, damage: cur.damage });
+                }
+                
+                if (!this.isBot) {
+                    this.mesh.rotation.y = mouseYaw;
+                }
+                this.mesh.position.add(aimDir.clone().multiplyScalar(-0.16));
+            }
+
+            reload() { if(this.reloadTimer <= 0) { this.reloadTimer = 1.4; AudioFX.playReload(); } }
+
+            update(delta) {
+                if(this.isDead) return;
+                if(this.reloadTimer > 0) { this.reloadTimer -= delta; if(this.reloadTimer <= 0) this.getCurrentWeapon().currentClip = this.getCurrentWeapon().mag; }
+                if(this.shootCooldown > 0) this.shootCooldown -= delta;
+
+                const baseHeight = this.isCrouching ? 0.32 : 0.48;
+                if(this.isJumping) {
+                    this.velocityY -= 14 * delta; this.position.y += this.velocityY * delta;
+                    if(this.position.y <= baseHeight) { 
+                        this.position.y = baseHeight; this.velocityY = 0; this.isJumping = false; 
+                        AudioFX.playLand();
+                    }
+                } else this.position.y = THREE.MathUtils.lerp(this.position.y, baseHeight, 0.15);
+
+                const isMoving = this.isBot ? (this.aiState !== "hide") : (keys.w || keys.a || keys.s || keys.d || joystickActive);
+                
+                // Emote anim loop override
+                if (this.activeEmote) {
+                    this.emoteTimer -= delta;
+                    const et = clock.getElapsedTime() * 12;
+                    if (this.activeEmote === "wave") {
+                        this.rig.lArm.rotation.z = Math.sin(et) * 0.8 + 0.5;
+                        this.rig.rArm.rotation.z = 0;
+                    } else if (this.activeEmote === "dance") {
+                        this.mesh.rotation.y += delta * 6;
+                        this.position.y += Math.sin(et) * 0.05;
+                    } else if (this.activeEmote === "laugh") {
+                        this.rig.head.rotation.x = Math.sin(et * 1.5) * 0.2;
+                        this.rig.torso.rotation.y = Math.sin(et) * 0.1;
+                    } else if (this.activeEmote === "victory") {
+                        this.rig.lArm.rotation.z = 1.5; this.rig.rArm.rotation.z = -1.5;
+                        this.rig.lArm.rotation.x = -1.5; this.rig.rArm.rotation.x = -1.5;
+                    } else if (this.activeEmote === "sit") {
+                        this.position.y = baseHeight - 0.18;
+                        this.rig.lLeg.rotation.x = -Math.PI / 2;
+                        this.rig.rLeg.rotation.x = -Math.PI / 2;
+                    } else if (this.activeEmote === "point") {
+                        this.rig.rArm.rotation.x = Math.PI / 2;
+                    }
+                    if (this.emoteTimer <= 0) {
+                        this.activeEmote = null;
+                        this.rig.lLeg.rotation.set(0,0,0); this.rig.rLeg.rotation.set(0,0,0);
+                    }
+                } else {
+                    // Standard movement cycles
+                    const t = clock.getElapsedTime() * (keys.shift ? 14 : 10);
+                    if(isMoving && !this.isJumping) {
+                        this.rig.lLeg.rotation.x = Math.sin(t)*0.75; this.rig.rLeg.rotation.x = -Math.sin(t)*0.75;
+                        this.rig.lArm.rotation.x = -Math.sin(t)*0.4; this.rig.rArm.rotation.x = Math.PI/2.2; 
+                        
+                        this.footstepTimer -= delta;
+                        if (this.footstepTimer <= 0) {
+                            AudioFX.playFootstep();
+                            this.footstepTimer = keys.shift ? 0.22 : 0.35;
+                        }
+                    } else if(this.isJumping) {
+                        this.rig.lLeg.rotation.x = -0.4; this.rig.rLeg.rotation.x = -0.4;
+                        this.rig.lArm.rotation.x = Math.PI; this.rig.rArm.rotation.x = Math.PI/2;
+                    } else {
+                        this.rig.lLeg.rotation.x = THREE.MathUtils.lerp(this.rig.lLeg.rotation.x, 0, 0.15);
+                        this.rig.rLeg.rotation.x = THREE.MathUtils.lerp(this.rig.rLeg.rotation.x, 0, 0.15);
+                        this.rig.lArm.rotation.x = THREE.MathUtils.lerp(this.rig.lArm.rotation.x, 0, 0.15);
+                        this.rig.rArm.rotation.x = THREE.MathUtils.lerp(this.rig.rArm.rotation.x, Math.PI/2.2, 0.15);
+                    }
+                }
+
+                if(this.isBot) this.updateBotAI(delta);
+                else this.updateHumanControls(delta);
+                
+                // Character always aims right hand weapon forward based on looking pitch
+                if (!this.isDead && !this.activeEmote) {
+                    const currentPitch = this.isBot ? 0 : mousePitch;
+                    this.rig.rArm.rotation.x = Math.PI/2.2 - currentPitch;
+                }
+                
+                this.mesh.position.copy(this.position);
+            }
+
+            updateHumanControls(delta) {
+                let dx = 0, dz = 0;
+                const fw = new THREE.Vector3(Math.sin(mouseYaw), 0, Math.cos(mouseYaw));
+                const rt = new THREE.Vector3(Math.cos(mouseYaw), 0, -Math.sin(mouseYaw));
+                if(keys.w) { dx+=fw.x; dz+=fw.z; } if(keys.s) { dx-=fw.x; dz-=fw.z; }
+                if(keys.a) { dx+=rt.x; dz+=rt.z; } if(keys.d) { dx-=rt.x; dz-=rt.z; }
+                if(joystickActive) { dx -= (fw.x*joystickDir.y + rt.x*joystickDir.x); dz -= (fw.z*joystickDir.y + rt.z*joystickDir.x); }
+
+                if(dx!==0 || dz!==0) {
+                    const norm = Math.sqrt(dx*dx + dz*dz);
+                    const spd = this.speed * (keys.shift ? 1.55 : 1.0) * (this.isCrouching ? 0.5 : 1.0);
+                    const res = checkCollision(this.position.x + (dx/norm)*spd, this.position.z + (dz/norm)*spd, 1.2);
+                    this.position.x = res.x; this.position.z = res.z;
+                    
+                    if (keys.ctrl || joystickActive || keys.w || keys.a || keys.s || keys.d) {
+                        this.mesh.rotation.y = Math.atan2(dx, dz);
+                    }
+                } else {
+                    this.mesh.rotation.y = mouseYaw;
+                }
+
+                if(keys.space && !this.isJumping) { 
+                    this.velocityY = 5.8; this.isJumping = true; keys.space = false; 
+                    AudioFX.playJump();
+                }
+            }
+
+            updateBotAI(delta) {
+                this.aiTimer -= delta;
+                if(this.aiTimer <= 0) {
+                    this.aiTimer = 1.0 + Math.random()*2.0;
+                    let near = null, md = 45;
+                    players.forEach(p => { if(p!==this && !p.isDead) { const d = this.position.distanceTo(p.position); if(d<md) { md=d; near=p; } } });
+                    if(near) { this.aiTarget = near; this.aiState = (this.hp < 80 && this.glooCount > 0) ? "hide" : "attack"; }
+                    else { this.aiTarget = null; this.aiState = "patrol"; }
+                }
+
+                if(this.aiState === "patrol") {
+                    if(Math.random()<0.04) { const r=Math.random()*Math.PI*2; this.aiForwardVec.set(Math.sin(r),0,Math.cos(r)).normalize(); }
+                    const res = checkCollision(this.position.x + this.aiForwardVec.x*this.speed*0.7, this.position.z + this.aiForwardVec.z*this.speed*0.7, 1.2);
+                    if(res.hit) this.aiForwardVec.negate(); else { this.position.x=res.x; this.position.z=res.z; }
+                    this.mesh.rotation.y = Math.atan2(this.aiForwardVec.x, this.aiForwardVec.z);
+                } else if(this.aiState === "attack" && this.aiTarget) {
+                    const dir = new THREE.Vector3().subVectors(this.aiTarget.position, this.position); dir.y=0; const dist = dir.length(); dir.normalize();
+                    this.aiForwardVec.copy(dir); this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                    if(dist > 16) {
+                        const res = checkCollision(this.position.x+dir.x*this.speed, this.position.z+dir.z*this.speed, 1.2);
+                        this.position.x=res.x; this.position.z=res.z;
+                    }
+                    if(Math.random()<0.015 && dist<22 && dist>8) this.throwGrenade();
+                    if(this.shootCooldown<=0 && this.reloadTimer<=0) this.fireWeapon(new THREE.Vector3(dir.x, (this.aiTarget.position.y-this.position.y)/dist, dir.z).normalize());
+                } else if(this.aiState === "hide") {
+                    this.placeGlooWall();
+                    const esc = Math.random()*Math.PI*2; this.aiForwardVec.set(Math.sin(esc),0,Math.cos(esc));
+                    this.aiState = "patrol"; this.aiTimer = 1.6;
+                }
+            }
+        }
+
+        // =========================================================================
+        // THREE.JS INITIALIZER & RENDER HOOKS
+        // =========================================================================
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x0c0a0f, 30, 90);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: userProfile.aa, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+            scene.add(hemi);
+            const dir = new THREE.DirectionalLight(0xffeedd, 0.8);
+            dir.position.set(50, 80, 40);
+            dir.castShadow = true;
+            dir.shadow.camera.top = 60; dir.shadow.camera.bottom = -60; dir.shadow.camera.left = -60; dir.shadow.camera.right = 60;
+            scene.add(dir);
+
+            clock = new THREE.Clock();
+            buildMaterials(); buildMap();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            setupMultiTouchAndPCControls();
+            animate();
+        }
+
+        // =========================================================================
+        // TOUCH CONTROLS AND MULTI-TOUCH RESOLUTION (FREE FIRE SPECIFICATION)
+        // =========================================================================
+        function setupMultiTouchAndPCControls() {
+            // PC Inputs
+            document.addEventListener('keydown', e => {
+                const k = e.key.toLowerCase();
+                if(keys.hasOwnProperty(k)) keys[k] = true;
+                if(k === 'q' && humanPlayer) humanPlayer.placeGlooWall();
+                if(k === 'g' && humanPlayer) humanPlayer.throwGrenade();
+                if(k === 'r' && humanPlayer) humanPlayer.reload();
+                if(k === 'e') toggleEmoteWheel();
+                if(['1','2','3','4','5','6'].includes(k)) switchWeapon(parseInt(k)-1);
+                if(e.code === 'Space') { keys.space = true; e.preventDefault(); }
+            });
+            document.addEventListener('keyup', e => {
+                const k = e.key.toLowerCase(); if(keys.hasOwnProperty(k)) keys[k] = false;
+            });
+
+            // Prevent the browser's right-click menu from popping up and blocking gameplay/aim
+            document.addEventListener('contextmenu', e => { e.preventDefault(); });
+
+            // Mouse Click inputs
+            document.getElementById('canvas-container').addEventListener('mousedown', e => {
+                if(!gameActive) return;
+                e.preventDefault();
+                if(document.pointerLockElement !== document.body && e.pointerType === 'mouse') document.body.requestPointerLock();
+                if(e.button === 0) tryFireHuman();
+                if(e.button === 2) toggleADS();
+            });
+            document.addEventListener('mousemove', e => {
+                if(!gameActive || document.pointerLockElement !== document.body) return;
+                const sens = userProfile.sens * 0.002 * (isScopeActive ? 0.35 : 1.0);
+                mouseYaw -= e.movementX * sens; mousePitch -= e.movementY * sens;
+                mousePitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, mousePitch));
+            });
+
+            // Virtual Joystick mapping
+            const joyWrapper = document.getElementById('joystick-wrapper');
+            const joyKnob = document.getElementById('joystick-knob');
+
+            // Flawless multi-touch handler preventing camera-freezing and button collisions
+            document.addEventListener('touchstart', e => {
+                for (let touch of e.changedTouches) {
+                    const tx = touch.clientX;
+                    const ty = touch.clientY;
+
+                    // Exclude specific HTML overlay action layers
+                    if (document.getElementById('screen-lobby').offsetParent || document.getElementById('screen-shop').offsetParent) continue;
+
+                    // Joystick Touch Registry
+                    const joyRect = joyWrapper.getBoundingClientRect();
+                    const distToJoy = Math.sqrt(Math.pow(tx - (joyRect.left + joyRect.width/2), 2) + Math.pow(ty - (joyRect.top + joyRect.height/2), 2));
+                    
+                    if (distToJoy < joyRect.width && touchJoyId === null) {
+                        touchJoyId = touch.identifier;
+                        updateJoystickCoords(touch);
+                        continue;
+                    }
+
+                    // Touch Swipe Camera Registry on right half
+                    if (tx > window.innerWidth / 2 && touchMoveId === null) {
+                        touchMoveId = touch.identifier;
+                        lastTouchMoveX = tx;
+                        lastTouchMoveY = ty;
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchmove', e => {
+                for (let touch of e.changedTouches) {
+                    if (touch.identifier === touchJoyId) {
+                        updateJoystickCoords(touch);
+                    } else if (touch.identifier === touchMoveId) {
+                        const tx = touch.clientX;
+                        const ty = touch.clientY;
+                        const dx = tx - lastTouchMoveX;
+                        const dy = ty - lastTouchMoveY;
+
+                        const sens = userProfile.sens * 0.004 * (isScopeActive ? 0.35 : 1.0);
+                        mouseYaw -= dx * sens;
+                        mousePitch -= dy * sens;
+                        mousePitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, mousePitch));
+
+                        lastTouchMoveX = tx;
+                        lastTouchMoveY = ty;
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', e => {
+                for (let touch of e.changedTouches) {
+                    if (touch.identifier === touchJoyId) {
+                        touchJoyId = null;
+                        joystickActive = false;
+                        joyKnob.style.transform = `translate(0px, 0px)`;
+                    } else if (touch.identifier === touchMoveId) {
+                        touchMoveId = null;
+                    }
+                }
+            });
+
+            function updateJoystickCoords(touch) {
+                const rect = joyWrapper.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                let dx = touch.clientX - cx;
+                let dy = touch.clientY - cy;
+                const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 35);
+                const angle = Math.atan2(dy, dx);
+                joyKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+                joystickDir = { x: (Math.cos(angle)*dist)/35, y: (Math.sin(angle)*dist)/35 };
+                joystickActive = true;
+            }
+
+            // HUD Action Dispatchers
+            const actions = {
+                'btn-fire': () => tryFireHuman(),
+                'btn-scope': () => toggleADS(),
+                'btn-jump': () => { if(humanPlayer && !humanPlayer.isJumping) { humanPlayer.velocityY=5.8; humanPlayer.isJumping=true; AudioFX.playJump(); } },
+                'btn-crouch': () => { if(humanPlayer) humanPlayer.isCrouching = !humanPlayer.isCrouching; },
+                'btn-gloo': () => { if(humanPlayer) humanPlayer.placeGlooWall(); },
+                'btn-grenade': () => { if(humanPlayer) humanPlayer.throwGrenade(); },
+                'btn-reload': () => { if(humanPlayer) humanPlayer.reload(); },
+                'btn-hud-emote': () => toggleEmoteWheel()
+            };
+
+            Object.keys(actions).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('touchstart', e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        AudioFX.playClick();
+                        actions[id]();
+                    }, { passive: false });
+                    // Also respond to mouse clicks (fixes buttons doing nothing on desktop/mouse input)
+                    el.addEventListener('mousedown', e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        AudioFX.playClick();
+                        actions[id]();
+                    });
+                }
+            });
+        }
+
+        function tryFireHuman() {
+            if(!humanPlayer || humanPlayer.isDead || humanPlayer.reloadTimer > 0 || humanPlayer.shootCooldown > 0) return;
+            const aimDir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(mousePitch, mouseYaw, 0)).normalize();
+            humanPlayer.fireWeapon(aimDir);
+        }
+
+        function toggleADS() {
+            isScopeActive = !isScopeActive;
+            document.getElementById('scope-overlay').style.display = isScopeActive ? 'block' : 'none';
+            document.getElementById('normal-crosshair').style.display = isScopeActive ? 'none' : 'block';
+            camera.fov = isScopeActive ? 25 : 60;
+            camera.updateProjectionMatrix();
+        }
+
+        function switchWeapon(idx) {
+            if(!humanPlayer || humanPlayer.isDead) return;
+            currentWeaponIndex = idx; humanPlayer.activeWeaponIndex = idx;
+            humanPlayer.updateWeaponModels();
+            if(isScopeActive) toggleADS();
+            renderWeaponSwitchHUD();
+        }
+
+        function renderWeaponSwitchHUD() {
+            const h = document.getElementById('weapon-hotbar-hud');
+            h.innerHTML = '';
+            weaponsDatabase.forEach((w, i) => {
+                const act = i === currentWeaponIndex;
+                const btn = document.createElement('button');
+                btn.className = `w-12 h-12 flex flex-col items-center justify-center rounded-xl border transition-all ${act ? 'bg-pink-500/20 border-pink-500 shadow-md' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`;
+                btn.onclick = () => { AudioFX.playClick(); switchWeapon(i); };
+                const previewIcon = WeaponIcons[w.iconName] || '';
+                btn.innerHTML = `
+                    <div class="scale-75">${previewIcon}</div>
+                    <span class="text-[7px] text-slate-400 font-bold block mt-0.5">${w.label}</span>
+                `;
+                h.appendChild(btn);
+            });
+        }
+
+        // =========================================================================
+        // DYNAMIC GAME LOOP & COMPOSER KINEMATICS
+        // =========================================================================
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!gameActive) { renderer.render(scene, camera); return; }
+
+            const delta = Math.min(clock.getDelta(), 0.1);
+            
+            matchTimer -= delta;
+            if(matchTimer <= 0) { endMatch(); return; }
+            const mins = Math.floor(matchTimer / 60), secs = Math.floor(matchTimer % 60);
+            document.getElementById('hud-timer').innerText = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+
+            players.forEach(p => p.update(delta));
+
+            // Camera calculations
+            if(humanPlayer && !humanPlayer.isDead) {
+                const camOff = new THREE.Vector3(0, 1.8, 0);
+                const back = new THREE.Vector3(Math.sin(mouseYaw), 0, Math.cos(mouseYaw)).multiplyScalar(isScopeActive ? 4.0 : 7.0);
+                camOff.add(back);
+                
+                let targetCamPos = humanPlayer.position.clone().add(camOff);
+                
+                // Camera Raycast Collision check
+                const raycaster = new THREE.Raycaster();
+                const rayDirection = new THREE.Vector3().subVectors(targetCamPos, humanPlayer.position).normalize();
+                raycaster.set(humanPlayer.position, rayDirection);
+                
+                const targetMeshes = obstacles.filter(o => o.meshRef).map(o => o.meshRef);
+                const intersections = raycaster.intersectObjects(targetMeshes, false);
+                
+                if (intersections.length > 0 && intersections[0].distance < targetCamPos.distanceTo(humanPlayer.position)) {
+                    targetCamPos.copy(intersections[0].point).add(rayDirection.clone().multiplyScalar(-0.4));
+                }
+
+                camera.position.lerp(targetCamPos, 0.35);
+                camera.rotation.order = 'YXZ';
+                camera.rotation.set(mousePitch, mouseYaw, 0);
+                
+                // HUD
+                document.getElementById('hud-hp-bar').style.width = `${(humanPlayer.hp/humanPlayer.maxHp)*100}%`;
+                document.getElementById('hud-hp-text').innerText = Math.round(humanPlayer.hp);
+                document.getElementById('hud-armor-bar').style.width = `${humanPlayer.armor}%`;
+                const cw = humanPlayer.getCurrentWeapon();
+                document.getElementById('hud-ammo').innerText = `${cw.currentClip} / ${cw.mag}`;
+                document.getElementById('hud-kills').innerText = humanPlayer.kills;
+            }
+
+            // Projectile mechanics
+            for(let i=bullets.length-1; i>=0; i--) {
+                const b = bullets[i]; b.pos.add(b.vel); b.mesh.position.copy(b.pos); b.life--;
+                
+                const bCol = checkCollision(b.pos.x, b.pos.z, 0.1);
+                if(bCol.hit || b.pos.y < 0 || b.pos.y > 20) {
+                    for (let obs of obstacles) {
+                        if (obs.damageWall && Math.abs(b.pos.x - obs.x) < obs.w && Math.abs(b.pos.z - obs.z) < obs.d) {
+                            obs.damageWall(b.damage);
+                        }
+                    }
+                    scene.remove(b.mesh); bullets.splice(i, 1); continue;
+                }
+                
+                let hit = false;
+                for(let p of players) {
+                    if(p === b.owner || p.isDead) continue;
+                    const d = b.pos.distanceTo(p.position);
+                    if(d < 1.0 && b.pos.y > p.position.y && b.pos.y < p.position.y + 1.8) {
+                        const isHS = b.pos.y > p.position.y + 1.3;
+                        p.takeDamage(b.damage * (isHS ? 2.5 : 1), isHS, b.owner);
+                        if(b.owner === humanPlayer) AudioFX.playHeadshot();
+                        hit = true; break;
+                    }
+                }
+                if(hit || b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
+            }
+
+            // Grenades Physics update loop
+            for(let i=grenades.length-1; i>=0; i--) {
+                const g = grenades[i]; g.vel.y -= 2.5 * delta; g.pos.add(g.vel.clone().multiplyScalar(delta*30));
+                
+                if(g.pos.y <= 0.25) { g.pos.y = 0.25; g.vel.y *= -0.5; g.vel.x *= 0.8; g.vel.z *= 0.8; }
+                const rc = checkCollision(g.pos.x, g.pos.z, 0.25);
+                if(rc.hit) { g.pos.x = rc.x; g.pos.z = rc.z; g.vel.x *= -0.5; g.vel.z *= -0.5; }
+                
+                g.mesh.position.copy(g.pos); g.fuse -= delta;
+                
+                if(g.fuse <= 0) {
+                    createExplosion(g.pos);
+                    players.forEach(p => {
+                        const d = p.position.distanceTo(g.pos);
+                        if(d < 6 && !p.isDead) p.takeDamage(Math.max(10, 100 - d*15), false, g.owner);
+                    });
+                    scene.remove(g.mesh); grenades.splice(i, 1);
+                }
+            }
+
+            // Particle Updates
+            for(let i=particles.length-1; i>=0; i--) {
+                const pt = particles[i]; pt.life -= delta;
+                if(pt.type === 'shell') {
+                    pt.velocity.y -= 10*delta; pt.mesh.position.add(pt.velocity.clone().multiplyScalar(delta));
+                    pt.mesh.rotation.x += 0.2; pt.mesh.rotation.y += 0.2;
+                    if(pt.mesh.position.y <= 0.1) { pt.mesh.position.y = 0.1; pt.velocity.y = 0; pt.velocity.x = 0; pt.velocity.z = 0; }
+                } else if(pt.type === 'explode') {
+                    const s = 1 + (1 - pt.life/0.3) * pt.maxScale; pt.mesh.scale.set(s,s,s);
+                    pt.mesh.material.opacity = pt.life/0.3;
+                } else if(pt.type === 'flash') {
+                    const s = pt.life/0.05; pt.mesh.scale.set(s,s,s);
+                }
+                
+                if(pt.life <= 0) { scene.remove(pt.mesh); particles.splice(i,1); }
+            }
+
+            drawMinimap();
+            renderer.render(scene, camera);
+        }
+
+        // World-space bounds used to project the arena onto the minimap canvas
+        const MINIMAP_WORLD_RANGE = 55; // half-width of world area shown on the map
+        function worldToMap(wx, wz, cx, cy, scale) {
+            return { x: cx + wx * scale, y: cy + wz * scale };
+        }
+
+        function drawMinimap() {
+            const cvs = document.getElementById('minimap-canvas'); if(!cvs) return;
+            const ctx = cvs.getContext('2d');
+            const W = cvs.width, H = cvs.height;
+            const cx = W / 2, cy = H / 2;
+            const scale = (W / 2) / MINIMAP_WORLD_RANGE;
+
+            // Background
+            const bgGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, W/2);
+            bgGrad.addColorStop(0, '#1e293b'); bgGrad.addColorStop(1, '#0b1120');
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = bgGrad;
+            ctx.beginPath(); ctx.arc(cx, cy, W/2 - 1, 0, Math.PI*2); ctx.fill();
+
+            // Faint grid for readability
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+            for (let g = -MINIMAP_WORLD_RANGE; g <= MINIMAP_WORLD_RANGE; g += 15) {
+                const p1 = worldToMap(g, -MINIMAP_WORLD_RANGE, cx, cy, scale);
+                const p2 = worldToMap(g, MINIMAP_WORLD_RANGE, cx, cy, scale);
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                const p3 = worldToMap(-MINIMAP_WORLD_RANGE, g, cx, cy, scale);
+                const p4 = worldToMap(MINIMAP_WORLD_RANGE, g, cx, cy, scale);
+                ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+            }
+
+            // Static arena layout: draw registered walls/crates/buildings as rectangles
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+            ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)'; ctx.lineWidth = 1;
+            obstacles.forEach(o => {
+                if (o.type === 'box') {
+                    const p = worldToMap(o.x, o.z, cx, cy, scale);
+                    const w = Math.max(2, o.w * scale), d = Math.max(2, o.d * scale);
+                    ctx.save();
+                    ctx.translate(p.x, p.y); ctx.rotate(o.rotY || 0);
+                    ctx.fillRect(-w/2, -d/2, w, d);
+                    ctx.strokeRect(-w/2, -d/2, w, d);
+                    ctx.restore();
+                } else if (o.type === 'cylinder') {
+                    const p = worldToMap(o.x, o.z, cx, cy, scale);
+                    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.5, o.r * scale), 0, Math.PI*2);
+                    ctx.fill(); ctx.stroke();
+                }
+            });
+
+            if (!humanPlayer) { ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, W/2 - 1, 0, Math.PI*2); ctx.stroke(); return; }
+
+            // Enemy blips (red) - only show if within radar range
+            players.forEach(p => {
+                if (p === humanPlayer || p.isDead) return;
+                const dx = p.position.x - humanPlayer.position.x;
+                const dz = p.position.z - humanPlayer.position.z;
+                if (Math.sqrt(dx*dx + dz*dz) > MINIMAP_WORLD_RANGE) return;
+                const pos = worldToMap(p.position.x, p.position.z, cx, cy, scale);
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath(); ctx.arc(pos.x, pos.y, 3.2, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#7f1d1d'; ctx.lineWidth = 1; ctx.stroke();
+            });
+
+            // Player marker (green arrow showing facing direction), fixed north-up map
+            const pp = worldToMap(humanPlayer.position.x, humanPlayer.position.z, cx, cy, scale);
+            ctx.save();
+            ctx.translate(pp.x, pp.y);
+            ctx.rotate(mouseYaw);
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.moveTo(0, -6); ctx.lineTo(4, 5); ctx.lineTo(-4, 5); ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#052e16'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.restore();
+
+            // Outer ring border
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(cx, cy, W/2 - 1, 0, Math.PI*2); ctx.stroke();
+        }
+
+        // =========================================================================
+        // ACCOUNT AUTHENTICATION & LOGIN persistence
+        // =========================================================================
+        function authLogin() {
+            const name = document.getElementById('auth-username').value.trim() || 'ToySoldier';
+            loadProfile(); userProfile.username = name; saveProfile();
+            document.getElementById('screen-auth').style.display = 'none';
+            AudioFX.init();
+            AudioFX.startBGM();
+            showLobby();
+        }
+
+        function showLobby() {
+            document.getElementById('screen-lobby').style.display = 'flex';
+            document.getElementById('screen-hud').style.display = 'none';
+            document.getElementById('screen-result').style.display = 'none';
+            gameActive = false;
+            
+            document.getElementById('lobby-profile-name').innerText = userProfile.username;
+            document.getElementById('lobby-profile-coins').innerText = `💰 ${userProfile.coins}`;
+            document.getElementById('lobby-profile-diamonds').innerText = `💎 ${userProfile.diamonds}`;
+            document.getElementById('lobby-profile-rp').innerText = userProfile.rp;
+            document.getElementById('lobby-rank-name').innerText = `(${getRankName(userProfile.rp)})`;
+            document.getElementById('lobby-profile-matches').innerText = `📊 ${userProfile.matchesWon} W / ${userProfile.matchesLost} L`;
+            
+            document.getElementById('cfg-sens').value = userProfile.sens; document.getElementById('lbl-sens').innerText = userProfile.sens;
+            document.getElementById('cfg-sfx').checked = userProfile.sfx;
+            document.getElementById('cfg-music').checked = userProfile.music;
+            document.getElementById('cfg-aa').checked = userProfile.aa;
+            
+            const charContainer = document.getElementById('lobby-characters');
+            charContainer.innerHTML = '';
+            charactersData.forEach((c) => {
+                const locked = !userProfile.unlockedChars.includes(c.id);
+                const btn = document.createElement('button');
+                btn.className = `p-3 rounded-xl border-2 text-xs font-bold transition-all ${userProfile.selectedChar === c.id ? 'border-pink-500 bg-pink-500/20 text-white' : 'border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-400'} ${locked ? 'opacity-50' : ''}`;
+                btn.innerHTML = `<span class="block text-lg mb-1">${locked?'🔒':'✅'}</span>${c.name}`;
+                btn.onclick = () => {
+                    if(locked) return;
+                    AudioFX.playClick();
+                    userProfile.selectedChar = c.id; saveProfile(); showLobby();
+                };
+                charContainer.appendChild(btn);
+                if(userProfile.selectedChar === c.id) {
+                    activeCharDef = c;
+                    document.getElementById('meta-name').innerText = c.name;
+                    document.getElementById('meta-special').innerText = `Passive: ${c.special}`;
+                }
+            });
+        }
+
+        function updateSettings() {
+            userProfile.sens = parseFloat(document.getElementById('cfg-sens').value);
+            document.getElementById('lbl-sens').innerText = userProfile.sens;
+            userProfile.sfx = document.getElementById('cfg-sfx').checked;
+            userProfile.music = document.getElementById('cfg-music').checked;
+            userProfile.aa = document.getElementById('cfg-aa').checked;
+            
+            if (userProfile.music) AudioFX.startBGM(); else AudioFX.stopBGM();
+            saveProfile();
+        }
+
+        // Real touch-capable device check (phone/tablet), not just screen width,
+        // so a resized desktop browser window doesn't get mistaken for mobile.
+        const IS_TOUCH_DEVICE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+        function applyControlSchemeForDevice() {
+            const joy = document.getElementById('joystick-wrapper');
+            const btns = document.getElementById('hud-buttons-container');
+            if (IS_TOUCH_DEVICE) {
+                joy.style.display = 'flex';
+                btns.style.display = 'block';
+            } else {
+                // Desktop/PC: hide on-screen touch controls, rely on WASD + mouse
+                joy.style.display = 'none';
+                btns.style.display = 'none';
+            }
+        }
+
+        function startMatch() {
+            document.getElementById('screen-lobby').style.display = 'none';
+            document.getElementById('screen-hud').style.display = 'block';
+
+            applyControlSchemeForDevice();
+            if(userProfile.hudPositions) defaultHUDPositions = userProfile.hudPositions;
+            applyHUDPositions();
+            renderWeaponSwitchHUD();
+
+            players.forEach(p => { if(p.mesh) scene.remove(p.mesh); });
+            players.length = 0; bullets.forEach(b => scene.remove(b.mesh)); bullets.length = 0;
+            grenades.forEach(g => scene.remove(g.mesh)); grenades.length = 0;
+
+            const cDef = charactersData.find(c => c.id === userProfile.selectedChar) || charactersData[0];
+            humanPlayer = new GameEntity(cDef, false, userProfile.username);
+            players.push(humanPlayer);
+
+            const botNames = ["AlphaBot", "SniperChibi", "GlooTrapper", "PinkFighter", "ScoutGreen", "GamerPro", "ToxicNinja", "CrateHider", "LmgWarrior"];
+            for(let i=0; i<9; i++) {
+                const bDef = charactersData[Math.floor(Math.random()*charactersData.length)];
+                players.push(new GameEntity(bDef, true, botNames[i]));
+            }
+
+            matchTimer = 300; gameActive = true;
+            document.getElementById('hud-player-name').innerText = userProfile.username;
+            document.getElementById('hud-char-badge').style.backgroundColor = cDef.colorHex;
+        }
+
+        function triggerLobbyEmote() {
+            const defaultEmote = userProfile.selectedEmotes[0] || "wave";
+            if (humanPlayer) {
+                humanPlayer.triggerEmote(defaultEmote);
+            } else {
+                // Instanciate dummy model for preview
+                AudioFX.playTone('sine', 400, 600, 0.1, 0.01, 0.2);
+            }
+        }
+
+        function endMatch() {
+            gameActive = false; document.exitPointerLock();
+            document.getElementById('screen-hud').style.display = 'none';
+            document.getElementById('scope-overlay').style.display = 'none';
+            isScopeActive = false;
+
+            players.sort((a,b) => b.kills - a.kills);
+            const pRank = players.indexOf(humanPlayer) + 1;
+            const won = pRank <= 3;
+            if(won) {
+                userProfile.matchesWon++;
+                AudioFX.playVictory();
+            } else {
+                userProfile.matchesLost++;
+                AudioFX.playDefeat();
+            }
+            
+            const earnedCoins = humanPlayer.kills * 40 + (won ? 300 : 100);
+            const earnedRP = won ? (60 + humanPlayer.kills*6) : (-15 + humanPlayer.kills*3);
+            
+            userProfile.coins += earnedCoins;
+            userProfile.rp = Math.max(0, userProfile.rp + earnedRP);
+            userProfile.xp += 100;
+            if (userProfile.xp >= 300) {
+                userProfile.xp = 0;
+                userProfile.level += 1;
+            }
+            saveProfile();
+
+            document.getElementById('screen-result').style.display = 'flex';
+            document.getElementById('result-status-icon').innerText = won ? '🏆' : '💀';
+            document.getElementById('result-status-title').innerText = won ? 'BOOYAH!' : 'DEFEAT';
+            document.getElementById('result-status-title').className = won ? 'text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500 mt-2 uppercase tracking-wide' : 'text-3xl font-black text-slate-500 mt-2 uppercase tracking-wide';
+            
+            document.getElementById('result-kills').innerText = humanPlayer.kills;
+            document.getElementById('result-coins').innerText = `+${earnedCoins}`;
+            document.getElementById('result-rp').innerText = (earnedRP >= 0 ? '+' : '') + earnedRP;
+
+            const lb = document.getElementById('result-leaderboard-list'); lb.innerHTML = '';
+            players.forEach((p,i) => {
+                const r = document.createElement('div');
+                r.className = `flex justify-between items-center p-2 rounded-lg ${p === humanPlayer ? 'bg-pink-500/20 border border-pink-500/50' : 'bg-slate-900/50'}`;
+                r.innerHTML = `<span class="text-xs font-bold ${p === humanPlayer ? 'text-white' : 'text-slate-400'}">${i+1}. ${p.name}</span><span class="text-xs text-pink-400 font-bold">${p.kills} Kills</span>`;
+                lb.appendChild(r);
+            });
+        }
+
+        function exitToLobby() {
+            if(gameActive) { gameActive = false; document.exitPointerLock(); }
+            document.getElementById('screen-result').style.display = 'none';
+            document.getElementById('screen-hud').style.display = 'none';
+            showLobby();
+        }
+
+        // =========================================================================
+        // FULL EMOTE WHEEL SELECTION SYSTEM
+        // =========================================================================
+        let emoteWheelOpen = false;
+        function toggleEmoteWheel() {
+            emoteWheelOpen = !emoteWheelOpen;
+            const cnt = document.getElementById('emote-wheel-container');
+            if (emoteWheelOpen) {
+                cnt.style.display = 'block';
+                renderEmoteWheel();
+            } else {
+                cnt.style.display = 'none';
+            }
+        }
+
+        function renderEmoteWheel() {
+            const cnt = document.getElementById('emote-wheel-container');
+            cnt.innerHTML = '';
+            const emotes = userProfile.selectedEmotes;
+            const radius = 95; // Radius of circular sectors placement
+            emotes.forEach((emId, idx) => {
+                const data = emotesDatabase.find(e => e.id === emId) || { name: "Emote", id: emId };
+                const angle = (idx / emotes.length) * Math.PI * 2;
+                const x = Math.cos(angle) * radius + 105; // centered coordinates shift
+                const y = Math.sin(angle) * radius + 105;
+                
+                const node = document.createElement('div');
+                node.className = 'emote-sector';
+                node.style.left = `${x}px`;
+                node.style.top = `${y}px`;
+                node.innerHTML = `
+                    <span class="text-lg">🎭</span>
+                    <span class="text-[8px] uppercase text-center mt-1">${data.name.split(' ')[0]}</span>
+                `;
+                node.onclick = () => {
+                    AudioFX.playClick();
+                    if (humanPlayer) {
+                        humanPlayer.triggerEmote(emId);
+                    }
+                    toggleEmoteWheel();
+                };
+                cnt.appendChild(node);
+            });
+        }
+
+        // =========================================================================
+        // THE ADVANCED GRID SHOP (VERBATIM ACCURATE v9 SPECIFICATIONS)
+        // =========================================================================
+        let shopOpen = false;
+        let activeShopTab = 'chars';
+        function toggleShop() {
+            shopOpen = !shopOpen;
+            document.getElementById('screen-shop').style.display = shopOpen ? 'flex' : 'none';
+            if(shopOpen) { 
+                setShopTab(activeShopTab); 
+            }
+        }
+
+        function setShopTab(tab) {
+            activeShopTab = tab;
+            const tabs = ['chars', 'weapons', 'gloos', 'emotes', 'grenades', 'bundles'];
+            tabs.forEach(t => {
+                const btn = document.getElementById('tab-' + t);
+                if (btn) {
+                    btn.className = `py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${t === tab ? 'bg-pink-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`;
+                }
+            });
+            renderShopGrid();
+        }
+
+        function renderShopGrid() {
+            const grid = document.getElementById('shop-items-grid');
+            grid.innerHTML = '';
+            document.getElementById('shop-balance-coins').innerText = `💰 ${userProfile.coins} Coins`;
+            document.getElementById('shop-balance-diamonds').innerText = `💎 ${userProfile.diamonds} Diamonds`;
+
+            let items = [];
+            let ownershipArray = [];
+            let activeEquipId = null;
+
+            if (activeShopTab === 'chars') {
+                items = characterSkins;
+                ownershipArray = userProfile.unlockedChars;
+                activeEquipId = userProfile.selectedChar;
+            } else if (activeShopTab === 'weapons') {
+                items = weaponSkins;
+                ownershipArray = userProfile.unlockedWeaponSkins;
+                activeEquipId = userProfile.selectedWeaponSkin;
+            } else if (activeShopTab === 'gloos') {
+                items = glooSkins;
+                ownershipArray = userProfile.unlockedGlooSkins;
+                activeEquipId = userProfile.selectedGlooSkin;
+            } else if (activeShopTab === 'emotes') {
+                items = emotesDatabase;
+                ownershipArray = userProfile.unlockedEmotes;
+                activeEquipId = userProfile.selectedEmotes[0]; 
+            } else if (activeShopTab === 'grenades') {
+                items = grenadesDatabase;
+                ownershipArray = ["classic"]; // standard unlock default
+                activeEquipId = "classic";
+            } else if (activeShopTab === 'bundles') {
+                items = bundlesDatabase;
+                ownershipArray = [];
+                activeEquipId = null;
+            }
+
+            items.forEach(it => {
+                const isOwned = ownershipArray.includes(it.id) || it.cost === 0;
+                const isEquipped = activeEquipId === it.id;
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-2xl border-2 flex gap-4 items-center ${isOwned ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-900/40'}`;
+                
+                // Construct a custom visual canvas representation for large item preview images
+                const thumbId = `canvas-thumb-${it.id}`;
+                
+                card.innerHTML = `
+                    <canvas id="${thumbId}" width="80" height="80" class="rounded-xl bg-slate-950 border border-slate-700 w-20 h-20 shadow"></canvas>
+                    <div class="flex-1 flex flex-col justify-between min-h-[80px]">
+                        <div>
+                            <h4 class="text-white font-black text-xs uppercase">${it.name}</h4>
+                            <p class="text-[9px] text-slate-400 mt-0.5 leading-tight">${it.desc}</p>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-amber-400">
+                                ${it.cost === 0 ? "FREE" : (it.currency === "coins" ? '💰 ' : '💎 ') + it.cost}
+                            </span>
+                            <div>
+                                ${isEquipped 
+                                    ? `<button disabled class="px-2.5 py-1 bg-pink-500 text-slate-950 text-[9px] font-black rounded-lg uppercase">ACTIVE</button>`
+                                    : isOwned
+                                    ? `<button onclick="equipShopItem('${activeShopTab}', '${it.id}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white text-[9px] font-bold rounded-lg border border-slate-700 transition-all uppercase">EQUIP</button>`
+                                    : `<button onclick="buyShopItem('${activeShopTab}', '${it.id}', ${it.cost}, '${it.currency}')" class="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-600 text-slate-950 text-[9px] font-black rounded-lg transition-all uppercase">BUY</button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+                
+                // Draw dynamic visual previews immediately
+                setTimeout(() => drawShopThumbnail(thumbId, activeShopTab, it), 10);
+            });
+        }
+
+        function drawShopThumbnail(canvasId, tab, item) {
+            const cvs = document.getElementById(canvasId); if (!cvs) return;
+            const ctx = cvs.getContext('2d');
+            
+            // Solid visual background gradient
+            const grad = ctx.createRadialGradient(40, 40, 5, 40, 40, 50);
+            grad.addColorStop(0, '#1e1b4b'); grad.addColorStop(1, '#090514');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 80, 80);
+
+            // Vector illustrations based on tab types
+            ctx.lineWidth = 2;
+            if (tab === 'chars') {
+                ctx.fillStyle = item.skinColor ? '#' + item.skinColor.toString(16) : '#ff75a0';
+                ctx.beginPath(); ctx.arc(40, 40, 20, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(32, 35, 3, 0, Math.PI * 2); ctx.arc(48, 35, 3, 0, Math.PI * 2); ctx.fill();
+            } else if (tab === 'weapons') {
+                ctx.strokeStyle = item.color ? '#' + item.color.toString(16) : '#546e7a';
+                ctx.beginPath(); ctx.moveTo(15, 45); ctx.lineTo(65, 45); ctx.lineTo(65, 35); ctx.lineTo(40, 35); ctx.closePath(); ctx.stroke();
+            } else if (tab === 'gloos') {
+                ctx.strokeStyle = item.color ? '#' + item.color.toString(16) : '#00f0ff';
+                ctx.beginPath(); ctx.arc(40, 55, 30, Math.PI, 0); ctx.stroke();
+            } else if (tab === 'emotes') {
+                ctx.fillStyle = '#f43f5e';
+                ctx.font = '28px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('🎭', 40, 40);
+            } else if (tab === 'bundles') {
+                ctx.fillStyle = '#d81b60';
+                ctx.font = '28px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('📦', 40, 40);
+            } else {
+                ctx.fillStyle = '#1b5e20';
+                ctx.beginPath(); ctx.arc(40, 40, 15, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#ffffff'; ctx.strokeRect(35, 15, 10, 10);
+            }
+        }
+
+        function buyShopItem(tab, id, cost, currency) {
+            let balance = currency === 'coins' ? userProfile.coins : userProfile.diamonds;
+            if (balance < cost) {
+                AudioFX.playTone('sine', 150, 100, 0.2, 0.01, 0.3);
+                return;
+            }
+            if (currency === 'coins') userProfile.coins -= cost; else userProfile.diamonds -= cost;
+
+            if (tab === 'chars') userProfile.unlockedChars.push(parseInt(id));
+            else if (tab === 'weapons') userProfile.unlockedWeaponSkins.push(id);
+            else if (tab === 'gloos') userProfile.unlockedGlooSkins.push(id);
+            else if (tab === 'emotes') userProfile.unlockedEmotes.push(id);
+
+            saveProfile(); AudioFX.playClick(); renderShopGrid();
+        }
+
+        function equipShopItem(tab, id) {
+            if (tab === 'chars') userProfile.selectedChar = parseInt(id);
+            else if (tab === 'weapons') userProfile.selectedWeaponSkin = id;
+            else if (tab === 'gloos') userProfile.selectedGlooSkin = id;
+            else if (tab === 'emotes') {
+                // Swap default emote slot
+                userProfile.selectedEmotes[0] = id;
+            }
+            saveProfile(); AudioFX.playClick(); renderShopGrid(); showLobby();
+        }
+
+        // =========================================================================
+        // HUD CUSTOM DESIGNER SYSTEM
+        // =========================================================================
+        let draggingBtn = null;
+        function applyHUDPositions() {
+            Object.keys(defaultHUDPositions).forEach(id => {
+                const b = document.getElementById(id);
+                if(b) {
+                    const d = defaultHUDPositions[id];
+                    b.style.left = `${d.x}%`; b.style.top = `${d.y}%`;
+                    b.style.transform = `scale(${d.scale})`; b.style.opacity = d.opacity;
+                }
+            });
+        }
+
+        function enterHUDDesigner() {
+            document.getElementById('screen-lobby').style.display = 'none';
+            document.getElementById('hud-designer-overlay').style.display = 'flex';
+            const canvas = document.getElementById('designer-canvas'); canvas.innerHTML = '';
+            
+            Object.keys(defaultHUDPositions).forEach(id => {
+                const og = document.getElementById(id); if(!og) return;
+                const d = defaultHUDPositions[id];
+                const clone = og.cloneNode(true); clone.id = 'ds-' + id; clone.className = 'absolute flex items-center justify-center rounded-full text-white shadow-2xl cursor-move touch-none font-bold text-xs';
+                clone.style.left = `${d.x}%`; clone.style.top = `${d.y}%`; clone.style.transform = `scale(${d.scale})`; clone.style.opacity = d.opacity;
+                
+                if(id==='btn-fire') clone.classList.add('w-16','h-16','bg-red-500');
+                else clone.classList.add('w-14','h-14','bg-slate-700');
+                
+                let startX, startY;
+                const onStart = (e) => {
+                    e.preventDefault(); draggingBtn = clone; activeHudElement = id;
+                    const cEv = e.touches ? e.touches[0] : e;
+                    const rect = clone.getBoundingClientRect();
+                    startX = cEv.clientX - rect.left; startY = cEv.clientY - rect.top;
+                    document.getElementById('ds-scale').value = defaultHUDPositions[id].scale;
+                    document.getElementById('ds-opacity').value = defaultHUDPositions[id].opacity;
+                    Array.from(canvas.children).forEach(c => c.style.border = 'none');
+                    clone.style.border = '2px solid #ec4899';
+                };
+                const onMove = (e) => {
+                    if(draggingBtn !== clone) return; e.preventDefault();
+                    const cEv = e.touches ? e.touches[0] : e;
+                    const crect = canvas.getBoundingClientRect();
+                    let nx = cEv.clientX - crect.left - startX, ny = cEv.clientY - crect.top - startY;
+                    const px = Math.max(0, Math.min(94, (nx / crect.width) * 100));
+                    const py = Math.max(0, Math.min(94, (ny / crect.height) * 100));
+                    clone.style.left = `${px}%`; clone.style.top = `${py}%`;
+                    defaultHUDPositions[id].x = px; defaultHUDPositions[id].y = py;
+                };
+                const onEnd = () => { draggingBtn = null; };
+                
+                clone.addEventListener('mousedown', onStart); clone.addEventListener('touchstart', onStart, {passive:false});
+                document.addEventListener('mousemove', onMove); document.addEventListener('touchmove', onMove, {passive:false});
+                document.addEventListener('mouseup', onEnd); document.addEventListener('touchend', onEnd);
+                canvas.appendChild(clone);
+            });
+            
+            document.getElementById('ds-scale').oninput = (e) => {
+                if(activeHudElement) {
+                    const val = parseFloat(e.target.value); defaultHUDPositions[activeHudElement].scale = val;
+                    document.getElementById('ds-'+activeHudElement).style.transform = `scale(${val})`;
+                }
+            };
+            document.getElementById('ds-opacity').oninput = (e) => {
+                if(activeHudElement) {
+                    const val = parseFloat(e.target.value); defaultHUDPositions[activeHudElement].opacity = val;
+                    document.getElementById('ds-'+activeHudElement).style.opacity = val;
+                }
+            };
+        }
+
+        function saveHUDLayout() { userProfile.hudPositions = defaultHUDPositions; saveProfile(); document.getElementById('hud-designer-overlay').style.display = 'none'; showLobby(); }
+        function resetHUDLayout() {
+            defaultHUDPositions = {
+                "btn-fire": { x: 80, y: 40, scale: 1.0, opacity: 0.9 }, "btn-scope": { x: 84, y: 68, scale: 1.0, opacity: 0.9 },
+                "btn-jump": { x: 70, y: 35, scale: 1.0, opacity: 0.9 }, "btn-crouch": { x: 70, y: 62, scale: 1.0, opacity: 0.9 },
+                "btn-gloo": { x: 55, y: 15, scale: 1.0, opacity: 0.9 }, "btn-grenade": { x: 42, y: 15, scale: 1.0, opacity: 0.9 },
+                "btn-reload": { x: 88, y: 15, scale: 1.0, opacity: 0.9 }
+            };
+            enterHUDDesigner();
+        }
+
+        window.onload = () => { initThreeJS(); };
+    </script>
+</body>
+</html>
